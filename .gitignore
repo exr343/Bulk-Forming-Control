@@ -1,0 +1,41 @@
+.vscode/launch.json
+*.pyc
+
+dev_code/
+*reference/
+*.DS_Store
+*data/
+*output/
+*defcon/
+*debug/
+*.ipynb_checkpoints
+
+# Proprietary report PDFs — keep local, do not publish
+Agility_Forge_Random_Hits_Report.pdf
+old/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+/build/
+/develop-eggs/
+/dist/
+/downloads/
+/eggs/
+/.eggs/
+/lib/
+/lib64/
+/parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
