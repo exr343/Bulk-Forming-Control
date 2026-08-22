@@ -30,8 +30,8 @@ nvidia-smi --query-gpu=name,memory.total --format=csv || echo "(nvidia-smi not a
 echo "JAX_PLATFORMS=${JAX_PLATFORMS:-<unset>}  CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-<unset>}"
 
 python -m applications.Agility_Forge.generate_dataset \
-    --n-rollouts 10 \
-    --n-hits 10 \
+    --n-rollouts 25 \
+    --n-hits 5 \
     --seed 42
 
 echo "Job finished: $(date)"

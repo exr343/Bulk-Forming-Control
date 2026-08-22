@@ -14,6 +14,20 @@ dev_code/
 Agility_Forge_Random_Hits_Report.pdf
 old/
 
+# Cross-session working notes — not published documentation
+checkpoint.md
+
+# SLURM job logs — transient run output, not source; can grow to tens of MB
+# per run. Two locations exist depending on where a job happens to be
+# submitted from (see submit_dataset_generation.sh's usage comment).
+/slurm_logs/
+applications/Agility_Forge/slurm_logs/
+
+# Koopman training artifacts (checkpoints, metrics, loss-curve plots, eval
+# .vtu dumps) — regenerable by re-running train.py, not source.
+applications/Agility_Forge/koopman/runs/
+*.pt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

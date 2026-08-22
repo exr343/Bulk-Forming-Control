@@ -58,9 +58,21 @@ manifest.json is rewritten after every saved file (not just at the end), so
 a run that is interrupted partway still leaves a valid, complete record of
 everything finished so far.
 
+Repeated invocations APPEND to an existing dataset_dir rather than replacing
+it: rollout numbering continues from the highest rollout_XX already present,
+manifest.json's `records` grow (never overwritten), and each invocation's
+seed/n_rollouts/timestamp is recorded as a new entry in manifest.json's
+`generation_runs` list. --seed defaults to fresh OS entropy each run for
+exactly this reason -- a fixed default would just regenerate the same
+rollouts every time instead of adding new ones. A run whose
+--n-hits/--band-width-frac/--compression-displacement/--total-time doesn't
+match the dataset's existing config is rejected (see ManifestWriter) rather
+than silently mixing incompatible rollout configs into one dataset.
+
 Usage:
     python -m applications.Agility_Forge.generate_dataset
-    python -m applications.Agility_Forge.generate_dataset --seed 7 --n-rollouts 10 --n-hits 10
+    python -m applications.Agility_Forge.generate_dataset --n-rollouts 10 --n-hits 10
+    python -m applications.Agility_Forge.generate_dataset --seed 7   # reproducible run
 """
 
 import os
@@ -75,9 +87,9 @@ except ImportError:
 import argparse
 import json
 import random
-import shutil
 import glob
 import time
+from datetime import datetime, timezone
 import numpy as onp
 import jax
 import jax.numpy as np
@@ -121,20 +133,51 @@ def convert_meshio_to_jaxfem(meshio_mesh, ele_type="TET4"):
 
 class ManifestWriter:
     """Accumulates dataset records and rewrites manifest.json after each one,
-    so an interrupted run still leaves a complete record of finished work."""
+    so an interrupted run still leaves a complete record of finished work.
+
+    Appends to an existing manifest.json under `path` if one is already
+    present -- records and generation_runs from prior generate_dataset.py
+    invocations are kept, never overwritten. Hard-errors if this run's
+    n_hits/band_width_frac/compression_displacement/total_time don't match
+    the dataset's existing config: koopman/dataset.py's fixed-K windowing
+    assumes every rollout in a dataset dir shares the same hit count/config,
+    so silently mixing incompatible configs would corrupt training data.
+    """
 
     def __init__(self, path, seed, n_rollouts, n_hits, band_width_frac,
                  compression_displacement, total_time):
         self.path = path
-        self.meta = {
-            "seed": seed,
-            "n_rollouts": n_rollouts,
+        config = {
             "n_hits_per_rollout": n_hits,
             "band_width_frac": band_width_frac,
             "compression_displacement_mm": compression_displacement,
             "total_time_s": total_time,
         }
-        self.records = []
+
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+            existing_config = {k: existing[k] for k in config}
+            if existing_config != config:
+                raise ValueError(
+                    f"This run's config {config} doesn't match the existing dataset's "
+                    f"config {existing_config} recorded at {path}. Mixing incompatible "
+                    f"rollout configs into one dataset dir would break dataset.py's "
+                    f"fixed-K windowing -- use a different output directory for a "
+                    f"deliberately different sweep."
+                )
+            self.records = existing["records"]
+            self.generation_runs = existing.get("generation_runs", [])
+        else:
+            self.records = []
+            self.generation_runs = []
+
+        self.meta = config
+        self.generation_runs.append({
+            "seed": seed,
+            "n_rollouts": n_rollouts,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
         self._flush()
 
     def add(self, record):
@@ -143,11 +186,23 @@ class ManifestWriter:
 
     def _flush(self):
         with open(self.path, "w", encoding="utf-8") as f:
-            json.dump({**self.meta, "records": self.records}, f, indent=2)
+            json.dump({**self.meta, "generation_runs": self.generation_runs,
+                       "records": self.records}, f, indent=2)
 
 
-def run_dataset_generation(n_rollouts=10, n_hits=10, seed=42, band_width_frac=0.2,
-                            compression_displacement=2.5, total_time=0.8):
+def _next_rollout_start_index(dataset_dir):
+    """Scan existing rollout_XX dirs and return the next free rollout index
+    (1 if none exist), so a new run appends rather than overwriting."""
+    indices = []
+    for path in glob.glob(os.path.join(dataset_dir, "rollout_*")):
+        suffix = os.path.basename(path)[len("rollout_"):]
+        if suffix.isdigit():
+            indices.append(int(suffix))
+    return max(indices, default=0) + 1
+
+
+def run_dataset_generation(n_rollouts=10, n_hits=10, seed=None, band_width_frac=0.2,
+                            compression_displacement=2.5, total_time=0.8, edge_margin_frac=0.02):
     t_start = time.time()
 
     crt_file_path = os.path.dirname(__file__)
@@ -158,16 +213,22 @@ def run_dataset_generation(n_rollouts=10, n_hits=10, seed=42, band_width_frac=0.
     stock_mesh_path = os.path.join(assets_dir, "0104-00_jaxforge_stock.obj")
     json_mesh_path = os.path.join(assets_dir, "0104-00_jaxforge_stock.json")
 
-    # Clean this script's own output directory only.
-    if os.path.isdir(dataset_dir):
-        shutil.rmtree(dataset_dir)
+    # Append to this script's output directory rather than wiping it -- lets
+    # repeated invocations grow one dataset across many runs instead of each
+    # run discarding the last.
     os.makedirs(dataset_dir, exist_ok=True)
+    start_idx = _next_rollout_start_index(dataset_dir)
 
-    rng = random.Random(seed)
+    # A fixed default seed would just replay the *same* rollouts on every
+    # run; draw fresh entropy unless the caller explicitly wants reproducible
+    # rollouts (--seed N), and record whichever was used for provenance.
+    actual_seed = seed if seed is not None else int.from_bytes(os.urandom(4), "big")
+    print(f"Using seed={actual_seed}" + (" (drawn from OS entropy)" if seed is None else " (explicit)"))
+    rng = random.Random(actual_seed)
 
     manifest = ManifestWriter(
         os.path.join(dataset_dir, "manifest.json"),
-        seed=seed, n_rollouts=n_rollouts, n_hits=n_hits,
+        seed=actual_seed, n_rollouts=n_rollouts, n_hits=n_hits,
         band_width_frac=band_width_frac, compression_displacement=compression_displacement,
         total_time=total_time,
     )
@@ -188,6 +249,19 @@ def run_dataset_generation(n_rollouts=10, n_hits=10, seed=42, band_width_frac=0.
     max_start_frac = 1.0 - band_width_frac
     if max_start_frac < 0.0:
         raise ValueError(f"band_width_frac={band_width_frac} exceeds 1.0")
+
+    # Keep the band away from both stock ends: a band sampled right at x=0 or
+    # x=H sits on a mesh tip already distorted by prior hits, which produced a
+    # Newton divergence that no dt-halving could recover from (job 3738103,
+    # rollout 7 hit 3, d_j=0.0005). Margin applies to both the band start and,
+    # via max_start_frac - edge_margin_frac, the band end.
+    d_j_lo = edge_margin_frac
+    d_j_hi = max_start_frac - edge_margin_frac
+    if d_j_hi < d_j_lo:
+        raise ValueError(
+            f"edge_margin_frac={edge_margin_frac} leaves no valid sampling range "
+            f"for band_width_frac={band_width_frac} (need 2*edge_margin_frac < {max_start_frac})"
+        )
 
     # === Initial temperature profile (same for every rollout) ===
     T_top = 1096.0
@@ -229,14 +303,16 @@ def run_dataset_generation(n_rollouts=10, n_hits=10, seed=42, band_width_frac=0.
     pristine_int_vars = problem.internal_vars  # never mutated below; reset point for every rollout
 
     # =========================================================================
-    # Outer loop: i = 1..n_rollouts -- each starts from a fresh undeformed billet
+    # Outer loop: i = start_idx..start_idx+n_rollouts-1 -- each starts from a
+    # fresh undeformed billet. Continues numbering past whatever rollouts
+    # already exist under dataset_dir rather than restarting at 1.
     # =========================================================================
-    for i in range(1, n_rollouts + 1):
+    for i in range(start_idx, start_idx + n_rollouts):
         rollout_dir = os.path.join(dataset_dir, f"rollout_{i:02d}")
         os.makedirs(rollout_dir, exist_ok=True)
 
         print("\n" + "#" * 80)
-        print(f"ROLLOUT {i}/{n_rollouts}")
+        print(f"ROLLOUT {i} ({i - start_idx + 1}/{n_rollouts} this run)")
         print("#" * 80)
 
         current_sol_u = sol_u0
@@ -263,12 +339,12 @@ def run_dataset_generation(n_rollouts=10, n_hits=10, seed=42, band_width_frac=0.
         for j in range(1, n_hits + 1):
             t_hit_start = time.time()
             print("\n" + "=" * 80)
-            print(f"ROLLOUT {i}/{n_rollouts}  HIT {j}/{n_hits}")
+            print(f"ROLLOUT {i}  HIT {j}/{n_hits}")
             print("=" * 80)
 
             # --- Uniformly sample d_j, R_j; u_j (depth of input) is fixed,
             #     identical to main.py / main_random_hits.py, not sampled ---
-            d_j = rng.uniform(0.0, max_start_frac)        # axial distance (fraction of H)
+            d_j = rng.uniform(d_j_lo, d_j_hi)              # axial distance (fraction of H)
             R_j = rng.uniform(0.0, 360.0)                 # axial orientation (deg)
             u_j = compression_displacement                 # depth of input (mm), fixed
 
@@ -408,11 +484,12 @@ def run_dataset_generation(n_rollouts=10, n_hits=10, seed=42, band_width_frac=0.
 
     total_wall = time.time() - t_start
     print("\n" + "#" * 80)
-    print(f"DATASET GENERATION COMPLETE: {n_rollouts} rollouts x {n_hits} hits "
-          f"= {n_rollouts * n_hits} hit samples + {n_rollouts} undeformed samples "
-          f"= {n_rollouts * (n_hits + 1)} .vtu files")
+    print(f"DATASET GENERATION COMPLETE: added rollouts {start_idx}-{start_idx + n_rollouts - 1} "
+          f"({n_rollouts} rollouts x {n_hits} hits = {n_rollouts * n_hits} hit samples "
+          f"+ {n_rollouts} undeformed samples = {n_rollouts * (n_hits + 1)} .vtu files this run)")
     print(f"Total wall time: {total_wall / 3600:.2f} hours")
-    print(f"Manifest: {os.path.join(dataset_dir, 'manifest.json')}")
+    print(f"Manifest: {os.path.join(dataset_dir, 'manifest.json')} "
+          f"({len(manifest.records)} records total, {len(manifest.generation_runs)} generation run(s))")
     print("#" * 80)
 
     return True
@@ -422,13 +499,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--n-rollouts", type=int, default=10, help="Number of independent rollouts (outer loop i).")
     parser.add_argument("--n-hits", type=int, default=10, help="Hits per rollout (inner loop j).")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for d_j, R_j draws.")
+    parser.add_argument("--seed", type=int, default=None,
+                         help="Random seed for d_j, R_j draws. Default: fresh OS entropy each run "
+                              "(so repeated invocations append *new* rollouts, not a replay of the "
+                              "same ones) -- pass an explicit value only for a reproducible run.")
     parser.add_argument("--band-width-frac", type=float, default=0.2,
                          help="Axial contact-band width as a fraction of H (fixed for every hit).")
     parser.add_argument("--compression-displacement", type=float, default=2.5,
                          help="u_j, depth of input (mm). NOT sampled -- fixed for every hit, "
                               "every rollout (default matches main_random_hits.py).")
     parser.add_argument("--total-time", type=float, default=0.8, help="Hit duration, s (fixed for every hit).")
+    parser.add_argument("--edge-margin-frac", type=float, default=0.02,
+                         help="Minimum distance (fraction of H) kept between the band and either "
+                              "stock end when sampling d_j, to avoid degenerate contact at the tip.")
     args = parser.parse_args()
 
     ok = run_dataset_generation(
@@ -438,6 +521,7 @@ if __name__ == "__main__":
         band_width_frac=args.band_width_frac,
         compression_displacement=args.compression_displacement,
         total_time=args.total_time,
+        edge_margin_frac=args.edge_margin_frac,
     )
     if not ok:
         raise SystemExit(1)

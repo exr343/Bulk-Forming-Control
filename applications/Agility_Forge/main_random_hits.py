@@ -13,8 +13,10 @@ Randomized schedule
   - Axial contact-band WIDTH is the same for every hit (0.2 * H, matching
     the fixed-width bands used in main.py) — "equal applied bands per hit".
   - Axial contact-band POSITION (x_min_band, as a fraction of H) is drawn
-    independently per hit from Uniform(0, 1 - band_width_frac), so the band
-    stays within the bar's forged length [0, H] for every hit.
+    independently per hit from Uniform(edge_margin_frac, 1 - band_width_frac -
+    edge_margin_frac), so the band stays within the bar's forged length
+    [0, H] for every hit, with a margin (default 2% of H, --edge-margin-frac)
+    kept from both ends to avoid degenerate contact right at the tip.
   - Rotation about the bar's x-axis (rotation_euler_x) is drawn independently
     per hit from Uniform(0, 360) degrees.
   - Die stroke (compression_displacement) and hit duration (total_time) are
@@ -89,7 +91,8 @@ def convert_meshio_to_jaxfem(meshio_mesh, ele_type="TET4"):
 # Randomized hit-schedule generation
 # =============================================================================
 def generate_random_hits(n_hits=10, band_width_frac=0.2, compression_displacement=2.5,
-                          total_time=0.8, rotation_range=(0.0, 360.0), seed=42):
+                          total_time=0.8, rotation_range=(0.0, 360.0), seed=42,
+                          edge_margin_frac=0.02):
     """Build a list of ``Hit`` objects with a fixed band width, fixed stroke,
     and fixed duration, but a randomly drawn axial band position and rotation
     for every hit.
@@ -108,6 +111,11 @@ def generate_random_hits(n_hits=10, band_width_frac=0.2, compression_displacemen
         Inclusive range (degrees) that rotation_euler_x is drawn from.
     seed : int
         Seed for the random draw; the same seed reproduces the same schedule.
+    edge_margin_frac : float
+        Minimum distance (fraction of H) kept between the band and either
+        stock end. A band sampled right at x=0 or x=H sits on a mesh tip
+        already distorted by prior hits, which can produce a Newton
+        divergence that no dt-halving recovers from.
 
     Returns
     -------
@@ -120,10 +128,18 @@ def generate_random_hits(n_hits=10, band_width_frac=0.2, compression_displacemen
     if max_start_frac < 0.0:
         raise ValueError(f"band_width_frac={band_width_frac} exceeds 1.0")
 
+    x_min_frac_lo = edge_margin_frac
+    x_min_frac_hi = max_start_frac - edge_margin_frac
+    if x_min_frac_hi < x_min_frac_lo:
+        raise ValueError(
+            f"edge_margin_frac={edge_margin_frac} leaves no valid sampling range "
+            f"for band_width_frac={band_width_frac} (need 2*edge_margin_frac < {max_start_frac})"
+        )
+
     hits = []
     schedule = []
     for i in range(n_hits):
-        x_min_frac = rng.uniform(0.0, max_start_frac)
+        x_min_frac = rng.uniform(x_min_frac_lo, x_min_frac_hi)
         x_max_frac = x_min_frac + band_width_frac
         rotation = rng.uniform(*rotation_range)
 
@@ -152,7 +168,8 @@ def generate_random_hits(n_hits=10, band_width_frac=0.2, compression_displacemen
 # Main thermo-mechanical driver for randomized multi-hit forging simulation
 # =============================================================================
 def run_thermo_mech_cylinder_press_random_hits(n_hits=10, seed=42, band_width_frac=0.2,
-                                                compression_displacement=2.5, total_time=0.8):
+                                                compression_displacement=2.5, total_time=0.8,
+                                                edge_margin_frac=0.02):
     """
     Run a randomized multi-hit forging simulation:
       - n_hits hits, applied sequentially.
@@ -203,6 +220,7 @@ def run_thermo_mech_cylinder_press_random_hits(n_hits=10, seed=42, band_width_fr
         compression_displacement=compression_displacement,
         total_time=total_time,
         seed=seed,
+        edge_margin_frac=edge_margin_frac,
     )
 
     # Load initial mesh
@@ -433,6 +451,10 @@ if __name__ == "__main__":
                          help="Die stroke per side, mm (same for every hit).")
     parser.add_argument("--total-time", type=float, default=0.8,
                          help="Hit duration, s (same for every hit).")
+    parser.add_argument("--edge-margin-frac", type=float, default=0.02,
+                         help="Minimum distance (fraction of H) kept between the band and either "
+                              "stock end when sampling the band position, to avoid degenerate "
+                              "contact at the tip.")
     args = parser.parse_args()
 
     run_thermo_mech_cylinder_press_random_hits(
@@ -441,4 +463,5 @@ if __name__ == "__main__":
         band_width_frac=args.band_width_frac,
         compression_displacement=args.compression_displacement,
         total_time=args.total_time,
+        edge_margin_frac=args.edge_margin_frac,
     )

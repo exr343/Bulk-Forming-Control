@@ -18,7 +18,12 @@ conda activate jax-fem-env
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH   # required for petsc4py
 ```
 
-`jax`/`jaxlib`/`torch` were only recently added to `environment.yml` and are currently **unpinned** — pin them to whatever's actually active in `jax-fem-env` (`python -c "import jax; print(jax.__version__)"`) from a real cluster session, since this file was edited without access to a live environment.
+`jax`/`jaxlib`/`torch` are pinned in `environment.yml` (`jax==0.6.2`, `jaxlib==0.6.2`, `torch==2.11.0+cu128`).
+
+**GPU driver gotcha**: this cluster's GPU nodes run NVIDIA driver branch R570 (checked across V100/A100/P100 nodes), which caps CUDA compatibility at **12.8** — CUDA 13.0 requires driver ≥580, which isn't available anywhere on this cluster (it's not a specific-node/GPU-model issue; every node sampled was on R570). A bare `pip install torch` defaults to the newest build (currently a CUDA 13.x wheel) and silently falls back to CPU with a `torch.cuda.is_available() == False` + a driver-version warning — install from PyTorch's CUDA 12.8 wheel index instead:
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cu128
+```
 
 ### On the cluster (see `cluster_setup.md`)
 
@@ -31,7 +36,7 @@ conda activate jax-fem-env
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 ```
 
-Batch dataset generation runs go through `applications/Agility_Forge/submit_dataset_generation.sh` (`sbatch submit_dataset_generation.sh`, must be submitted with CWD at repo root — it `cd`s there itself). Logs land in `applications/Agility_Forge/slurm_logs/`.
+Batch dataset generation runs go through `applications/Agility_Forge/submit_dataset_generation.sh` (`sbatch submit_dataset_generation.sh`, must be submitted with CWD at repo root — it `cd`s there itself). Logs land in `slurm_logs/`, relative to wherever `sbatch` was invoked from (repo root if following the instruction above, `applications/Agility_Forge/slurm_logs/` if submitted from inside that directory instead) — both locations are git-ignored (SLURM logs are transient run output, not source; can grow to tens of MB per run).
 
 ## Common commands
 
@@ -44,11 +49,14 @@ python -m applications.Agility_Forge.main
 # Agility Forge: randomized hit schedule
 python -m applications.Agility_Forge.main_random_hits
 
-# Agility Forge: dataset generation (many rollouts, for training data)
-python -m applications.Agility_Forge.generate_dataset --n-rollouts 10 --n-hits 10 --seed 42
+# Agility Forge: dataset generation (many rollouts, for training data).
+# Appends to an existing dataset dir rather than replacing it -- rerunning
+# adds more rollouts instead of discarding what's there. Omit --seed for a
+# fresh (non-reproducible) draw each run; pass one for a reproducible run.
+python -m applications.Agility_Forge.generate_dataset --n-rollouts 25 --n-hits 5
 
-# Koopman Autoencoder training (stage 2 — scaffolded, not yet implemented)
-python -m applications.Agility_Forge.koopman.train --dataset-dir applications/Agility_Forge/data/dataset
+# Koopman Autoencoder training (stage 2 — implemented, proof-of-concept)
+python -m applications.Agility_Forge.koopman.train --dataset-dir applications/Agility_Forge/data/dataset --epochs 100
 ```
 
 There is no lint/format config in this repo and no test suite yet (the upstream benchmark tests that shipped with JAX-FEM tested the now-removed unmodified library, not `jax_forge` or Agility_Forge — there's no existing test coverage for this project's own code).
@@ -76,14 +84,18 @@ The `_new`/`_latest` files (`fe_new.py`, `problem_new.py`, `basis_new.py`, `solv
 - `mesh_container.py` — `MeshContainer`: loads/converts stock geometry (Open3D mesh → JSON → jax-fem `Mesh`).
 - `main.py` — driver for a fixed multi-hit rotational forging schedule; handles inter-hit thermal-state relaxation (ramped `T_old` blend + re-equilibration, since resetting temperature in one shot produces a dt-independent Newton stall) and rebuilds contact BCs on the post-relaxation surface each hit.
 - `main_random_hits.py` — same driver logic with randomized hit schedules.
-- `generate_dataset.py` — runs many randomized rollouts (`run_dataset_generation`, CLI via `--n-rollouts/--n-hits/--seed`) and writes a manifest (`ManifestWriter`) plus one `.vtu` per saved state (per-node `Displacement` + `Temperature`) — this is the training data source for stage 2. This is what `submit_dataset_generation.sh` invokes on the cluster.
-- `data/` — mesh assets, VTK output, per-hit step/scale diagnostic plots; regenerated/cleaned at the start of each run (git-ignored).
+- `generate_dataset.py` — runs many randomized rollouts (`run_dataset_generation`, CLI via `--n-rollouts/--n-hits/--seed`) and writes a manifest (`ManifestWriter`) plus one `.vtu` per saved state (per-node `Displacement` + `Temperature`) — this is the training data source for stage 2. This is what `submit_dataset_generation.sh` invokes on the cluster. **Appends** to an existing dataset dir across invocations rather than wiping it: rollout numbering continues from the highest existing `rollout_XX`, `manifest.json` merges (records accumulate, `generation_runs` tracks one provenance entry — seed/n_rollouts/timestamp — per invocation), and a run whose `--n-hits`/`--band-width-frac`/`--compression-displacement`/`--total-time` doesn't match the dataset's existing config is rejected rather than silently mixed in. `--seed` defaults to fresh OS entropy (not a fixed value) so repeated runs add *new* rollouts.
+- `data/` — `msh/` (mesh assets, a real input — hardcoded path, don't move), `dataset/` (stage 1's output, see above), `backup/` (leftover diagnostic/VTK output from `main.py`/`main_random_hits.py` runs, moved aside rather than deleted); regenerated/cleaned at the start of each `main.py`/`main_random_hits.py` run (git-ignored). Don't write into `dataset/` while `generate_dataset.py` has a job actively running against it (manifest.json is rewritten, non-atomically, after every saved record).
 
 `open3d` is an optional import in `main.py`/`main_random_hits.py`/`generate_dataset.py` — mesh-conversion functions are disabled with a warning if it's not installed.
 
-### `applications/Agility_Forge/koopman/` — stage 2: Koopman Autoencoder (scaffolded, not implemented)
+### `applications/Agility_Forge/koopman/` — stage 2: Koopman Autoencoder (implemented, proof-of-concept — not yet run against the full dataset)
 
-`dataset.py` (loads `manifest.json` + `.vtu` rollouts into training tensors), `model.py` (`KoopmanAutoencoder`: encoder/decoder + latent linear dynamics), `train.py` (PyTorch training loop) are stubs — signatures and docstrings only, every body raises `NotImplementedError`. See `koopman/README.md` for the open design questions (state-vector representation, latent dimension, loss terms) that need resolving before filling these in.
+Modeled on `peter-frazier/KAE_for_uniaxial_tensile_test`'s `LRAN_BLRAN/LRAN_LD`, with one deliberate departure: the original state does **not** appear in the latent (`z = Psi(x)`, not LRAN_LD's `z = [x; Psi(x)]`). Full rationale for every design decision (state representation, control encoding, normalization, loss terms, architecture sizing) is in `koopman/README.md`'s "Design decisions (implemented)" section — read that before changing any of these files.
+
+- `dataset.py` — loads `manifest.json` + `.vtu` rollouts. State is the full flattened `[Displacement, Temperature]` per node (`n_x = n_nodes*4`, no reduction); control is `[d_j_frac, sin(R_j), cos(R_j)]` used **raw** (Koopman convention: only the state is normalized/lifted, not the input); state normalization is pooled per physical quantity (one `[-1,1]` scale for all `Displacement` components, a separate one for `Temperature`) so per-axis rescaling doesn't distort displacement direction. One training window per rollout (`K = n_hits_per_rollout`), prefix train/test split by rollout index.
+- `model.py` — `KoopmanAutoencoder`: `Lifting` is a nonlinear MLP encoder (`z = Psi(x)`, no `x` concatenated in — `n_z` *is* the full latent dim), decoder is a single **learned linear** map (`nn.Linear(n_z, n_x)`, not exact), `A`/`B` linear dynamics (`z_{k+1} = A z_k + B u_k`).
+- `train.py` — `L_id + L_fwd + L_lin` (+ optional `L_eig`, off by default) loss, early stopping on test `L_fwd`, per-epoch train-vs-test loss-curve plot + `metrics.json`, true-vs-predicted `.vtu` dump for one held-out rollout. Default architecture `n_z=512, alpha=32 (hidden width 512), n_h=8` (~33.3M params) — sized for the dataset growing via `generate_dataset.py`'s append-mode, not for whatever's on disk today; expect heavy overfitting until more rollouts accumulate. Deliberately imports its own stdlib logger rather than `from jax_forge import logger` — `jax_forge/__init__.py` has import-time side effects (prints a `pyfiglet` banner, pulls in the JAX/FEM stack) that this module is meant to stay decoupled from.
 
 ### `applications/Agility_Forge/control/` — stage 3: MPC loop (scaffolded, not implemented)
 

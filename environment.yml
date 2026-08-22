@@ -18,11 +18,16 @@ dependencies:
     - fenics-basix==0.9.0
     - pyfiglet==1.0.3
     # Required by jax_forge (applications/Agility_Forge's FEM core) and by
-    # applications/Agility_Forge/koopman (PyTorch training). Previously
-    # installed manually on the cluster (see cluster_setup.md) and undeclared
-    # here — versions below are unpinned placeholders; pin to whatever's
-    # actually active in jax-fem-env (`python -c "import jax; print(jax.__version__)"`)
-    # from a GPU-node session, then update this file.
-    - jax
-    - jaxlib
-    - torch
+    # applications/Agility_Forge/koopman (PyTorch training). Versions pinned
+    # to what's actually active in jax-fem-env.
+    - jax==0.6.2
+    - jaxlib==0.6.2
+    # torch: a plain `pip install torch==2.11.0` here may resolve to a
+    # different CUDA build than the cu128 one actually installed and tested
+    # -- this cluster's GPU driver (checked across V100/A100/P100 nodes, all
+    # on branch R570) caps out at CUDA 12.8, so `torch.cuda.is_available()`
+    # silently returns False under a newer CUDA build instead of failing
+    # loudly. After `conda env create`, explicitly reinstall against the
+    # matching wheel index:
+    #   pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+    - torch==2.11.0
