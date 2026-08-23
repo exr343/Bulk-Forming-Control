@@ -28,6 +28,10 @@ applications/Agility_Forge/slurm_logs/
 applications/Agility_Forge/koopman/runs/
 *.pt
 
+# SVD/POD analysis output (singular values, effective-dimension json, plot)
+# — regenerable by re-running svd_analysis.py, not source.
+applications/Agility_Forge/SVD/runs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

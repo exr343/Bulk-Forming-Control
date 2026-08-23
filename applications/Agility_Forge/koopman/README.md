@@ -19,21 +19,60 @@ default. Modeled on `peter-frazier/KAE_for_uniaxial_tensile_test`'s
 `LRAN_BLRAN/LRAN_LD`, with one deliberate departure: **the original state does
 not appear in the latent** (no `z = [x; Psi(x)]`) — here `z = Psi(x)` only.
 
-- **State vector**: full flattened `[Displacement, Temperature]` over every
-  node, `n_x = n_nodes * 4` (no reduction). A comparably-sized FEM dataset in
-  the reference codebase fed the same shape directly into an MLP encoder with
-  no PCA/POD/surface-only pre-projection, so this follows that precedent.
-- **Latent / architecture**: `z = Psi(x)` is a purely learned nonlinear lift
-  (`model.Lifting`, an MLP) — since `x` isn't concatenated in, `n_z` *is* the
-  full latent dimension. The decoder is a single **learned linear** map
-  (`nn.Linear(n_z, n_x)`), not exact and not a nonlinear MLP — all
-  nonlinearity lives in the lift; `A`, `B`, and the decoder stay linear
-  (closer to EDMD/Koopman-with-a-learned-dictionary). Current defaults:
-  `n_z=512`, `alpha=32` (hidden width 512, matched to `n_z` so no layer
-  bottlenecks the next), `n_h=8` — a deliberate bet sized for the dataset
-  growing substantially via `generate_dataset.py`'s append-mode (see below),
-  not for today's dataset size; expect heavy overfitting until more rollouts
-  accumulate.
+- **State vector**: flattened `Displacement` only over every node, `n_x =
+  n_nodes * 3` (no reduction). Originally `[Displacement, Temperature]`
+  (`n_x = n_nodes * 4`) following a comparably-sized FEM dataset in the
+  reference codebase that fed the same shape directly into an MLP encoder
+  with no PCA/POD/surface-only pre-projection; Temperature was dropped from
+  the state at the user's request so the model predicts nodal displacement
+  fields only. `generate_dataset.py`/the `.vtu` files still carry Temperature
+  (jax_forge's actual thermo-mechanical coupling doesn't change), it's just
+  not read into `x` by `koopman/dataset.py` anymore.
+- **POD pre-reduction (fixed, not learned)**: before any neural network runs,
+  the normalized `n_x`-dim state is projected onto a fixed `r`-dim POD basis
+  (`--n-pod-modes`, default `r=75`): `a = (x - pod_mean) @ pod_modes.T`.
+  `pod_mean`/`pod_modes` are computed once by `dataset.compute_pod_basis`
+  (mean-center, economy SVD, keep the top `r` right singular vectors) fit on
+  the **training rollouts' normalized states only** — same train-only-fit
+  principle as `x_scale` below, so the basis never sees test data. Motivated
+  by `applications/Agility_Forge/SVD/`'s finding that the full 25-rollout,
+  150-snapshot dataset needs only ~11/30/71 modes for 90/95/99.9% cumulative
+  energy — the raw `n_x=22599`-dim (and previously `n_z=512`-to-2.4B-param
+  encoder) representation was wildly overparameterized relative to the
+  data's actual intrinsic dimensionality. **Caveat, flagged rather than
+  quietly assumed**: fitting `r=75` modes from ~20 training rollouts (~120
+  snapshots, mean-centered rank ≤119) uses roughly 63% of every degree of
+  freedom the training split has — the higher modes in that basis (roughly
+  30-75) are more likely to encode rollout-specific noise than
+  generalizable deformation structure than the lower ones are. `r=75` is an
+  explicit user choice (between the full-dataset 99%/99.9% thresholds of
+  30/71 modes), not a validated-robust one; the `id`/`fwd` loss floor (POD
+  truncation error) is a decent live signal of how much this matters — watch
+  it, don't just watch `L_fwd`.
+- **Latent / architecture**: `z = Psi(a)` is a purely learned nonlinear lift
+  of the POD-reduced coefficients `a` (`model.Lifting`), *not* of the raw
+  state — `n_z=250` deliberately *exceeds* `r=75` (classical Koopman: lift to
+  a *higher*-dimensional space where the dynamics become linear). The
+  decoder is a single **learned linear** map back down to `r`
+  (`nn.Linear(n_z, r)`), followed by the **fixed** POD reconstruction
+  `x_hat = pod_mean + a_hat @ pod_modes` — not exact (the learned half isn't)
+  and not a nonlinear MLP; all nonlinearity lives in the lift, `A`, `B`, and
+  both linear maps around the fixed POD step stay linear (closer to
+  EDMD/Koopman-with-a-learned-dictionary). `Lifting` is `in_proj(r-
+  >block_widths[0]) -> residual blocks, one per entry in block_widths ->
+  out_proj(block_widths[-1]->n_z)`. Each block wraps `layers_per_block`
+  `[LayerNorm -> Linear(width,width) -> activation]` layers in a single skip
+  connection (`out = in + F(in)`); a plain Linear+activation *transition* (no
+  skip) bridges consecutive blocks whose widths differ -- skipped entirely
+  (not even an identity layer) when they match, so constant-width blocks
+  chain directly with no extra layers. Current defaults: `r=75`, `n_z=250`,
+  `block_widths=[250, 250, 250, 250]` (4 blocks, constant width),
+  `layers_per_block=8` (32 hidden layers total, ~2.19M params) — at the
+  user's explicit request, replacing the earlier `n_x`-input, `block_widths=
+  [10000, 5000, 2500]`, ~2.4B-param design once the SVD/POD analysis showed
+  that scale was unjustified by the data. LayerNorm (kept from that earlier
+  design, where it was required for stability at width>=2500/16-layer
+  blocks) empirically remains stable at this smaller width/depth too.
 - **Control-dependent dynamics**: linear, `z_{k+1} = A z_k + B u_k`
   (not bilinear). `u_k = [d_j_frac, sin(R_j), cos(R_j)]`, used **raw, with no
   normalization** — in Koopman model fitting the inputs are left untouched,
@@ -43,11 +82,11 @@ not appear in the latent** (no `z = [x; Psi(x)]`) — here `z = Psi(x)` only.
   gamma_lin=1.0`), `+ L_eig` optional (`gamma_eig`, default `0.0`). `L_id` is
   required here (unlike LRAN_LD) because the decoder isn't exact. See
   `train.py`'s module docstring for what each term measures.
-- **State normalization**: pooled per physical quantity — one `[-1,1]`
-  min-max scale shared across all `Displacement` components (all nodes, all 3
-  axes), a separate shared scale across all `Temperature` components. Fit on
-  the training split only. Rescaling `ux`/`uy`/`uz` independently would
-  distort displacement *direction*, which is physically meaningful here.
+- **State normalization**: one pooled `[-1,1]` min-max scale shared across
+  every `Displacement` component (all nodes, all 3 axes) — not per-axis,
+  which would distort displacement *direction*, physically meaningful here.
+  Fit on the training split only (`x_scale`), applied before the POD step
+  above (POD is fit on already-normalized training states, not raw ones).
 - **Train/test split**: by rollout, prefix-style (`rollouts[:n_train]` /
   `rollouts[n_train:]`) — valid because rollouts are already IID (independent
   seeded draws per rollout). One window per rollout, `K = n_hits_per_rollout`

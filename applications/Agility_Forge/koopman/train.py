@@ -75,17 +75,28 @@ def parse_args():
     parser.add_argument("--dataset-dir", default="applications/Agility_Forge/data/dataset")
     parser.add_argument("--train-frac", type=float, default=0.8, help="Fraction of rollouts used for training.")
 
-    parser.add_argument("--latent-dim", type=int, default=512, help="n_z: full dimension of z = Psi(x).")
-    parser.add_argument("--n-h", type=int, default=8, help="Number of hidden layers in the lifting network.")
+    parser.add_argument("--n-pod-modes", type=int, default=75,
+                         help="r: dimension of the fixed POD-reduced representation the encoder "
+                              "actually receives (state -> POD-project onto this many modes, fit "
+                              "on training rollouts only -- see koopman/dataset.py's "
+                              "compute_pod_basis -- then lifted to n_z by the Lifting network).")
+    parser.add_argument("--latent-dim", type=int, default=250, help="n_z: full dimension of z = Psi(a).")
+    parser.add_argument("--block-widths", type=lambda s: [int(w) for w in s.split(",")],
+                         default=[250, 250, 250, 250],
+                         help="Comma-separated hidden width per residual block, e.g. '250,250,250,250' "
+                              "for 4 blocks at constant width. A Linear+activation transition bridges "
+                              "each pair of blocks whose widths differ (skipped when they match, so "
+                              "constant-width blocks chain directly with no extra layers).")
+    parser.add_argument("--layers-per-block", type=int, default=8,
+                         help="[LayerNorm -> Linear(width,width) -> activation] layers per residual "
+                              "block (each block wraps one skip connection: out = in + F(in)).")
     parser.add_argument("--activation", default="Tanh", choices=["Tanh", "ReLU", "LeakyReLU", "Sigmoid"])
-    parser.add_argument("--alpha", type=int, default=32, help="Width multiplier; hidden width = 16*alpha.")
     parser.add_argument("--init-scale", type=float, default=0.99, help="Initial spectral radius of A.")
 
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--wd", type=float, default=1e-4, help="AdamW weight decay.")
-    parser.add_argument("--gradclip", type=float, default=0.05)
     parser.add_argument("--gamma-id", type=float, default=1.0)
     parser.add_argument("--gamma-fwd", type=float, default=1.0)
     parser.add_argument("--gamma-lin", type=float, default=1.0)
@@ -125,7 +136,7 @@ def _compute_losses(model, xs, us, gamma_eig, device):
 
 
 def _epoch_pass(model, dataset, K, gamma_id, gamma_fwd, gamma_lin, gamma_eig, device,
-                 optimizer=None, gradclip=None, batch_size=None):
+                 optimizer=None, batch_size=None):
     """One pass over `dataset`. Trains (with grad) if optimizer is given, else evaluates (no grad)."""
     train_mode = optimizer is not None
     model.train(train_mode)
@@ -146,7 +157,6 @@ def _epoch_pass(model, dataset, K, gamma_id, gamma_fwd, gamma_lin, gamma_eig, de
             if train_mode:
                 optimizer.zero_grad()
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), gradclip)
                 optimizer.step()
 
         totals["loss"] += loss.item()
@@ -208,18 +218,24 @@ def train(args):
 
     logger.info("Loss terms:\n  " + "\n  ".join(LOSS_TERM_EXPLANATIONS.values()))
 
-    train_dataset, test_dataset, info = build_rollout_dataset(args.dataset_dir, train_frac=args.train_frac)
+    train_dataset, test_dataset, info = build_rollout_dataset(
+        args.dataset_dir, train_frac=args.train_frac, n_pod_modes=args.n_pod_modes,
+    )
     K = info["n_hits"]
     logger.info(f"Rollouts: {info['n_rollouts_train']} train / {info['n_rollouts_test']} test "
-                f"(K={K} steps/window, n_x={info['n_x']}, n_u={info['n_u']})")
+                f"(K={K} steps/window, n_x={info['n_x']}, n_u={info['n_u']}, "
+                f"r={info['n_pod_modes']} POD modes)")
 
     model = KoopmanAutoencoder(
         n_x=info["n_x"], n_u=info["n_u"], n_z=args.latent_dim,
-        n_h=args.n_h, act=args.activation, alpha=args.alpha, init_scale=args.init_scale,
+        pod_mean=info["pod_mean"], pod_modes=info["pod_modes"],
+        block_widths=args.block_widths, layers_per_block=args.layers_per_block,
+        act=args.activation, init_scale=args.init_scale,
     ).to(device)
     n_params = sum(p.numel() for p in model.parameters())
-    logger.info(f"KoopmanAutoencoder | n_x={info['n_x']} n_u={info['n_u']} n_z={args.latent_dim} "
-                f"n_h={args.n_h} alpha={args.alpha} (width={16 * args.alpha}) | params={n_params:,}")
+    logger.info(f"KoopmanAutoencoder | n_x={info['n_x']} r={model.r} n_u={info['n_u']} "
+                f"n_z={args.latent_dim} block_widths={args.block_widths} "
+                f"layers_per_block={args.layers_per_block} | params={n_params:,}")
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.wd)
 
@@ -233,7 +249,7 @@ def train(args):
     for epoch in range(1, args.epochs + 1):
         train_totals = _epoch_pass(
             model, train_dataset, K, args.gamma_id, args.gamma_fwd, args.gamma_lin, args.gamma_eig, device,
-            optimizer=optimizer, gradclip=args.gradclip, batch_size=args.batch_size,
+            optimizer=optimizer, batch_size=args.batch_size,
         )
         test_totals = _epoch_pass(
             model, test_dataset, K, args.gamma_id, args.gamma_fwd, args.gamma_lin, args.gamma_eig, device,
