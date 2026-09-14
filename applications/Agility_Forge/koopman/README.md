@@ -1,4 +1,8 @@
-# Koopman Autoencoder (stage 2) — design notes
+# Koopman Autoencoder (earlier stage-2 approach) — design notes
+
+> **Status**: superseded by the MeshGraphNets-style GNN surrogate in
+> `../GNN/` (see its README) — kept here for reference, code still runs, but
+> this is no longer the active stage-2 approach.
 
 Trains a latent linear-dynamics model of the forging state from the rollouts
 produced by `applications/Agility_Forge/generate_dataset.py` (stage 1), for use

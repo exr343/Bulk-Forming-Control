@@ -6,9 +6,8 @@ Implements the scheme in "Data Generation for Hot Forging Control Pipeline":
         Initialize x_i as an undeformed billet
         Save undeformed .vtu file associated with undeformed billet
         for j = 1, ..., 10
-            Uniformly sample d_j (axial distance), R_j (axial orientation)
-            u_j (depth of input) is fixed -- same value for every hit,
-                             identical to main.py / main_random_hits.py
+            Uniformly sample d_j (axial distance), R_j (axial orientation),
+                             u_j (depth of input)
             Perform sequence of steps to apply d_j, R_j, u_j to x_i
             Save final step (.vtu file) of x_i associated with
                 application of d_j, R_j, u_j
@@ -20,10 +19,16 @@ Mapping onto this codebase's `Hit` object ([hit_config.py]):
                                 fixed (--band-width-frac, default 0.2) so d_j
                                 alone determines the band's position.
   - R_j (axial orientation) -> rotation_euler_x, drawn from Uniform(0, 360) deg.
-  - u_j (depth of input)    -> compression_displacement (mm). NOT sampled --
-                                fixed at --compression-displacement (default
-                                2.5 mm) for every hit, every rollout, exactly
-                                matching main_random_hits.py's fixed stroke.
+  - u_j (depth of input)    -> compression_displacement (mm), drawn from
+                                Uniform(--min-compression-displacement,
+                                --max-compression-displacement) (default
+                                0.5-2.0 mm). Range chosen from the two forging
+                                depths (0.62mm, 1.63mm) reported for this same
+                                billet geometry (⌀15.9mm round stock) in the
+                                JAX-FORGE paper (Wright et al., CIRP Annals
+                                2026), widened slightly beyond those two
+                                validated points rather than restricted to
+                                exactly them.
   - Hit duration (total_time) is NOT sampled by the pseudocode; it is fixed
     (--total-time, default 0.8 s) for every hit, same as main_random_hits.py.
 
@@ -36,8 +41,9 @@ Differences from main_random_hits.py (which this file is based on):
     step. This matches "Save final step (.vtu file)" in the pseudocode and
     keeps the dataset's storage footprint to ~110 files total instead of
     ~2,800 (110 x ~28 adaptive steps/hit).
-  - d_j and R_j are randomized per hit, same as main_random_hits.py; u_j
-    (stroke depth) is fixed, also same as main_random_hits.py.
+  - d_j, R_j, and (as of the 3D-actuation-space expansion) u_j are all
+    randomized per hit; main_random_hits.py still samples only d_j/R_j and
+    keeps u_j fixed.
 
 Note: no springback / die-retraction step is modeled, matching main.py and
 main_random_hits.py exactly -- each hit's saved "final step" is the state
@@ -65,9 +71,10 @@ seed/n_rollouts/timestamp is recorded as a new entry in manifest.json's
 `generation_runs` list. --seed defaults to fresh OS entropy each run for
 exactly this reason -- a fixed default would just regenerate the same
 rollouts every time instead of adding new ones. A run whose
---n-hits/--band-width-frac/--compression-displacement/--total-time doesn't
-match the dataset's existing config is rejected (see ManifestWriter) rather
-than silently mixing incompatible rollout configs into one dataset.
+--n-hits/--band-width-frac/--min-compression-displacement/
+--max-compression-displacement/--total-time doesn't match the dataset's
+existing config is rejected (see ManifestWriter) rather than silently mixing
+incompatible rollout configs into one dataset.
 
 Usage:
     python -m applications.Agility_Forge.generate_dataset
@@ -85,6 +92,8 @@ except ImportError:
     print("[Warning] open3d not available, mesh conversion functions will be disabled")
 
 import argparse
+import contextlib
+import fcntl
 import json
 import random
 import glob
@@ -131,93 +140,152 @@ def convert_meshio_to_jaxfem(meshio_mesh, ele_type="TET4"):
     return Mesh(meshio_mesh.points, meshio_mesh.cells_dict[cell_type])
 
 
+@contextlib.contextmanager
+def _locked(dataset_dir):
+    """Exclusive advisory lock (POSIX flock) on a dedicated lock file in
+    dataset_dir, serializing rollout-index reservation and manifest.json
+    read-modify-write across concurrent generate_dataset.py processes that
+    target the same dataset_dir.
+
+    Advisory only: a process that never enters this context manager isn't
+    blocked by it. In particular, any generate_dataset.py process already
+    running (imported this module into memory) before this locking was
+    added has no idea it exists and can still race a lock-respecting
+    process -- this only makes NEW invocations of this script mutually
+    safe with each other, not retroactively safe against an old one.
+    """
+    os.makedirs(dataset_dir, exist_ok=True)
+    lock_path = os.path.join(dataset_dir, ".manifest.lock")
+    with open(lock_path, "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
 class ManifestWriter:
     """Accumulates dataset records and rewrites manifest.json after each one,
     so an interrupted run still leaves a complete record of finished work.
 
-    Appends to an existing manifest.json under `path` if one is already
-    present -- records and generation_runs from prior generate_dataset.py
-    invocations are kept, never overwritten. Hard-errors if this run's
-    n_hits/band_width_frac/compression_displacement/total_time don't match
-    the dataset's existing config: koopman/dataset.py's fixed-K windowing
+    Every read and write of manifest.json happens under _locked(dataset_dir)
+    and re-reads the file fresh from disk each time (never trusts an
+    in-memory copy across calls) -- safe for multiple ManifestWriter
+    instances, in separate concurrent processes, appending to the SAME
+    dataset_dir: each add() merges into whatever the *current* on-disk
+    state is, not a stale snapshot from __init__ or an earlier add(), so
+    concurrent processes' records don't clobber each other.
+
+    Hard-errors if this run's n_hits/band_width_frac/min_compression_
+    displacement/max_compression_displacement/total_time don't match the
+    dataset's existing config: koopman/dataset.py's fixed-K windowing
     assumes every rollout in a dataset dir shares the same hit count/config,
     so silently mixing incompatible configs would corrupt training data.
     """
 
-    def __init__(self, path, seed, n_rollouts, n_hits, band_width_frac,
-                 compression_displacement, total_time):
-        self.path = path
-        config = {
+    def __init__(self, dataset_dir, seed, n_rollouts, n_hits, band_width_frac,
+                 min_compression_displacement, max_compression_displacement, total_time):
+        self.dataset_dir = dataset_dir
+        self.path = os.path.join(dataset_dir, "manifest.json")
+        self.meta = {
             "n_hits_per_rollout": n_hits,
             "band_width_frac": band_width_frac,
-            "compression_displacement_mm": compression_displacement,
+            "min_compression_displacement_mm": min_compression_displacement,
+            "max_compression_displacement_mm": max_compression_displacement,
             "total_time_s": total_time,
         }
 
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                existing = json.load(f)
-            existing_config = {k: existing[k] for k in config}
-            if existing_config != config:
-                raise ValueError(
-                    f"This run's config {config} doesn't match the existing dataset's "
-                    f"config {existing_config} recorded at {path}. Mixing incompatible "
-                    f"rollout configs into one dataset dir would break dataset.py's "
-                    f"fixed-K windowing -- use a different output directory for a "
-                    f"deliberately different sweep."
-                )
-            self.records = existing["records"]
-            self.generation_runs = existing.get("generation_runs", [])
-        else:
-            self.records = []
-            self.generation_runs = []
+        with _locked(dataset_dir):
+            existing = self._read()
+            if existing is not None:
+                existing_config = {k: existing[k] for k in self.meta}
+                if existing_config != self.meta:
+                    raise ValueError(
+                        f"This run's config {self.meta} doesn't match the existing dataset's "
+                        f"config {existing_config} recorded at {self.path}. Mixing incompatible "
+                        f"rollout configs into one dataset dir would break dataset.py's "
+                        f"fixed-K windowing -- use a different output directory for a "
+                        f"deliberately different sweep."
+                    )
+                records = existing["records"]
+                generation_runs = existing.get("generation_runs", [])
+            else:
+                records = []
+                generation_runs = []
 
-        self.meta = config
-        self.generation_runs.append({
-            "seed": seed,
-            "n_rollouts": n_rollouts,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
-        self._flush()
+            generation_runs.append({
+                "seed": seed,
+                "n_rollouts": n_rollouts,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+            self._write(records, generation_runs)
 
     def add(self, record):
-        self.records.append(record)
-        self._flush()
+        with _locked(self.dataset_dir):
+            existing = self._read()
+            records = existing["records"] if existing is not None else []
+            generation_runs = existing.get("generation_runs", []) if existing is not None else []
+            records.append(record)
+            self._write(records, generation_runs)
 
-    def _flush(self):
+    def _read(self):
+        if not os.path.exists(self.path):
+            return None
+        with open(self.path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def _write(self, records, generation_runs):
         with open(self.path, "w", encoding="utf-8") as f:
-            json.dump({**self.meta, "generation_runs": self.generation_runs,
-                       "records": self.records}, f, indent=2)
+            json.dump({**self.meta, "generation_runs": generation_runs, "records": records},
+                      f, indent=2)
 
 
-def _next_rollout_start_index(dataset_dir):
-    """Scan existing rollout_XX dirs and return the next free rollout index
-    (1 if none exist), so a new run appends rather than overwriting."""
+def _reserve_rollout_range(dataset_dir, n_rollouts):
+    """Must be called while holding _locked(dataset_dir). Scans existing
+    rollout_XX dirs for the next free index, then immediately creates empty
+    placeholder directories for the whole reserved range -- so a
+    concurrently-reserving process, once it acquires the lock next, sees
+    them as taken and doesn't pick an overlapping range. Returns start_idx.
+    """
     indices = []
     for path in glob.glob(os.path.join(dataset_dir, "rollout_*")):
         suffix = os.path.basename(path)[len("rollout_"):]
         if suffix.isdigit():
             indices.append(int(suffix))
-    return max(indices, default=0) + 1
+    start_idx = max(indices, default=0) + 1
+    for i in range(start_idx, start_idx + n_rollouts):
+        os.makedirs(os.path.join(dataset_dir, f"rollout_{i:02d}"), exist_ok=True)
+    return start_idx
 
 
 def run_dataset_generation(n_rollouts=10, n_hits=10, seed=None, band_width_frac=0.2,
-                            compression_displacement=2.5, total_time=0.8, edge_margin_frac=0.02):
+                            min_compression_displacement=0.5, max_compression_displacement=2.0,
+                            total_time=0.8, edge_margin_frac=0.02,
+                            dataset_dir=None):
     t_start = time.time()
 
     crt_file_path = os.path.dirname(__file__)
     data_dir = os.path.join(crt_file_path, "data")
     msh_dir = os.path.join(data_dir, "msh/jax_forge")
-    dataset_dir = os.path.join(data_dir, "dataset")
+    # dataset_dir is the OUTPUT location -- overridable so multiple
+    # generate_dataset.py invocations can run concurrently against separate
+    # directories (ManifestWriter's read-modify-overwrite manifest.json isn't
+    # safe for two processes writing the same dataset_dir at once -- see
+    # CLAUDE.md). msh_dir/assets_dir stay fixed: the mesh is a real input
+    # asset, not per-run output.
+    if dataset_dir is None:
+        dataset_dir = os.path.join(data_dir, "dataset")
     assets_dir = os.path.join(msh_dir, "assets")
     stock_mesh_path = os.path.join(assets_dir, "0104-00_jaxforge_stock.obj")
     json_mesh_path = os.path.join(assets_dir, "0104-00_jaxforge_stock.json")
 
     # Append to this script's output directory rather than wiping it -- lets
     # repeated invocations grow one dataset across many runs instead of each
-    # run discarding the last.
-    os.makedirs(dataset_dir, exist_ok=True)
-    start_idx = _next_rollout_start_index(dataset_dir)
+    # run discarding the last. Reservation happens under the same lock
+    # ManifestWriter uses, so concurrent processes targeting this dataset_dir
+    # never claim overlapping rollout index ranges.
+    with _locked(dataset_dir):
+        start_idx = _reserve_rollout_range(dataset_dir, n_rollouts)
 
     # A fixed default seed would just replay the *same* rollouts on every
     # run; draw fresh entropy unless the caller explicitly wants reproducible
@@ -227,9 +295,11 @@ def run_dataset_generation(n_rollouts=10, n_hits=10, seed=None, band_width_frac=
     rng = random.Random(actual_seed)
 
     manifest = ManifestWriter(
-        os.path.join(dataset_dir, "manifest.json"),
+        dataset_dir,
         seed=actual_seed, n_rollouts=n_rollouts, n_hits=n_hits,
-        band_width_frac=band_width_frac, compression_displacement=compression_displacement,
+        band_width_frac=band_width_frac,
+        min_compression_displacement=min_compression_displacement,
+        max_compression_displacement=max_compression_displacement,
         total_time=total_time,
     )
 
@@ -261,6 +331,11 @@ def run_dataset_generation(n_rollouts=10, n_hits=10, seed=None, band_width_frac=
         raise ValueError(
             f"edge_margin_frac={edge_margin_frac} leaves no valid sampling range "
             f"for band_width_frac={band_width_frac} (need 2*edge_margin_frac < {max_start_frac})"
+        )
+    if max_compression_displacement < min_compression_displacement:
+        raise ValueError(
+            f"max_compression_displacement={max_compression_displacement} is less than "
+            f"min_compression_displacement={min_compression_displacement}"
         )
 
     # === Initial temperature profile (same for every rollout) ===
@@ -342,11 +417,11 @@ def run_dataset_generation(n_rollouts=10, n_hits=10, seed=None, band_width_frac=
             print(f"ROLLOUT {i}  HIT {j}/{n_hits}")
             print("=" * 80)
 
-            # --- Uniformly sample d_j, R_j; u_j (depth of input) is fixed,
-            #     identical to main.py / main_random_hits.py, not sampled ---
+            # --- Uniformly sample d_j, R_j, u_j -- all three actuation
+            #     parameters are independently redrawn every hit ---
             d_j = rng.uniform(d_j_lo, d_j_hi)              # axial distance (fraction of H)
             R_j = rng.uniform(0.0, 360.0)                 # axial orientation (deg)
-            u_j = compression_displacement                 # depth of input (mm), fixed
+            u_j = rng.uniform(min_compression_displacement, max_compression_displacement)  # depth of input (mm)
 
             hit = Hit(
                 x_min_band=d_j,
@@ -488,8 +563,10 @@ def run_dataset_generation(n_rollouts=10, n_hits=10, seed=None, band_width_frac=
           f"({n_rollouts} rollouts x {n_hits} hits = {n_rollouts * n_hits} hit samples "
           f"+ {n_rollouts} undeformed samples = {n_rollouts * (n_hits + 1)} .vtu files this run)")
     print(f"Total wall time: {total_wall / 3600:.2f} hours")
+    final_manifest = manifest._read()
     print(f"Manifest: {os.path.join(dataset_dir, 'manifest.json')} "
-          f"({len(manifest.records)} records total, {len(manifest.generation_runs)} generation run(s))")
+          f"({len(final_manifest['records'])} records total, "
+          f"{len(final_manifest['generation_runs'])} generation run(s))")
     print("#" * 80)
 
     return True
@@ -500,18 +577,30 @@ if __name__ == "__main__":
     parser.add_argument("--n-rollouts", type=int, default=10, help="Number of independent rollouts (outer loop i).")
     parser.add_argument("--n-hits", type=int, default=10, help="Hits per rollout (inner loop j).")
     parser.add_argument("--seed", type=int, default=None,
-                         help="Random seed for d_j, R_j draws. Default: fresh OS entropy each run "
+                         help="Random seed for d_j, R_j, u_j draws. Default: fresh OS entropy each run "
                               "(so repeated invocations append *new* rollouts, not a replay of the "
                               "same ones) -- pass an explicit value only for a reproducible run.")
     parser.add_argument("--band-width-frac", type=float, default=0.2,
                          help="Axial contact-band width as a fraction of H (fixed for every hit).")
-    parser.add_argument("--compression-displacement", type=float, default=2.5,
-                         help="u_j, depth of input (mm). NOT sampled -- fixed for every hit, "
-                              "every rollout (default matches main_random_hits.py).")
+    parser.add_argument("--min-compression-displacement", type=float, default=0.5,
+                         help="Lower bound (mm) of u_j's per-hit Uniform(min, max) sampling range. "
+                              "Default range (0.5-2.0mm) is widened slightly beyond the two forging "
+                              "depths (0.62mm, 1.63mm) reported for this same billet geometry "
+                              "(diameter 15.9mm round stock) in the JAX-FORGE paper.")
+    parser.add_argument("--max-compression-displacement", type=float, default=2.0,
+                         help="Upper bound (mm) of u_j's per-hit Uniform(min, max) sampling range. "
+                              "See --min-compression-displacement for the range's justification.")
     parser.add_argument("--total-time", type=float, default=0.8, help="Hit duration, s (fixed for every hit).")
     parser.add_argument("--edge-margin-frac", type=float, default=0.02,
                          help="Minimum distance (fraction of H) kept between the band and either "
                               "stock end when sampling d_j, to avoid degenerate contact at the tip.")
+    parser.add_argument("--dataset-dir", default=None,
+                         help="Output directory for manifest.json + rollout_XX/. Defaults to "
+                              "data/dataset. Only point two concurrently-running invocations at "
+                              "the SAME dataset-dir if you've verified that's safe -- ManifestWriter "
+                              "reads the whole manifest.json into memory and overwrites it whole on "
+                              "every save, so two processes writing the same file at once can lose "
+                              "each other's records or collide on rollout numbering.")
     args = parser.parse_args()
 
     ok = run_dataset_generation(
@@ -519,9 +608,11 @@ if __name__ == "__main__":
         n_hits=args.n_hits,
         seed=args.seed,
         band_width_frac=args.band_width_frac,
-        compression_displacement=args.compression_displacement,
+        min_compression_displacement=args.min_compression_displacement,
+        max_compression_displacement=args.max_compression_displacement,
         total_time=args.total_time,
         edge_margin_frac=args.edge_margin_frac,
+        dataset_dir=args.dataset_dir,
     )
     if not ok:
         raise SystemExit(1)

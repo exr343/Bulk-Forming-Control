@@ -1,32 +1,142 @@
-# MPC control loop (stage 3) — design notes
+# MPC control loop (stage 3)
 
-Uses the trained Koopman Autoencoder (`../koopman/`, stage 2) as the fast
-predictive model inside an MPC loop, and `plant_interface.ForgingPlant` (the
-real Agility_Forge/`jax_forge` simulation) as the ground-truth plant each
-control step is actually applied to and validated against.
+Uses the trained GNN surrogate (`../GNN/`, stage 2) as the fast predictive
+model inside an MPC loop, and `plant_interface.ForgingPlant` (the real
+Agility_Forge/`jax_forge` simulation) as the ground-truth plant each control
+step is actually applied to and validated against. An earlier Koopman
+Autoencoder surrogate (`../koopman/`) was explored for this role first; the
+GNN surrogate is the active model throughout everything below.
 
-## Open design questions (resolve before filling in the stubs)
+**Status**: implemented and validated against the real plant, not just the
+surrogate. `plant_interface.ForgingPlant` mirrors `generate_dataset.py`'s
+per-hit loop exactly (same BC rebuild, same thermal relaxation ramp — see
+"Design decisions" below for why that had to be settled explicitly, not
+assumed). `mpc.MPCController` implements single-shooting SQP planning
+(`plan()`) and the full receding-horizon closed loop against the real plant
+(`run()`).
 
-- **Control horizon**: how many hits ahead to plan over. Longer horizons need
-  the Koopman model's multi-step rollout to stay accurate (see the koopman
-  README's multi-step-consistency loss question).
-- **Solver**: with linear latent dynamics, MPC reduces to a QP per step — via
-  `cvxpy`, a custom projected-gradient loop in `torch`, or another QP library.
-  Not yet chosen / added as a dependency.
-- **Control bounds**: physical limits on `d_j` (compression depth), `x_max_band`
-  (hit position), `R_j` (rotation) — should mirror what `generate_dataset.py`'s
-  rollout sampler already treats as valid ranges, so MPC never plans a hit
-  stage 1 never demonstrated.
-- **Cost function / target state**: what the controller is actually driving
-  toward (final displacement/temperature profile? a specific target shape?) —
-  needs to be defined before `MPCController.__init__`'s target_state makes sense.
-- **Failure handling**: `ForgingPlant.step` can fail to converge (see its
-  docstring) — the MPC loop needs a fallback (re-plan with a smaller/different
-  control, or abort) rather than assuming every planned hit succeeds.
+## Design decisions (settled)
 
-## Validation loop
+- **Shooting method: single-shooting, not multi-shooting.** The literal
+  problem statement (`x_{k+1}=f(x_k,u_k)` as a constraint, cost over `x_k`)
+  reads like multi-shooting notation — `x_k` as an explicit decision
+  variable, tied to the dynamics via an equality constraint. That's
+  intractable here: `x_k` is the full ~13,065-dim surface displacement
+  field, so a 5-step horizon would mean ~65,000+ decision variables and
+  as many nonlinear equality constraints. Single-shooting instead makes
+  the *only* decision variables the controls (`u_0..u_{N-1}`, 3 per step —
+  `d_j_frac`, `R_j_deg`, `u_j_frac`); `x_k` is computed by literally rolling
+  the GNN forward from `x_0`, so the dynamics constraint is satisfied by
+  construction and never appears in the solver at all. For a horizon this
+  short (~5 hits), this is standard practice, not a simplification of
+  the real problem.
+- **Solver: SQP via `scipy.optimize.minimize(method="SLSQP")`.** Not the
+  QP-per-step approach `GNN/README.md` originally floated — that only works
+  for the koopman model's *linear* latent dynamics; a GNN processor (many
+  rounds of nonlinear message passing) is not affine in the control
+  regardless of solver choice. SLSQP does exactly the requested
+  BFGS-approximated-Hessian SQP internally (sequential QP subproblems,
+  quasi-Newton Hessian of the Lagrangian) — no hand-rolled Hessian update
+  needed. Gradients are exact, not finite-difference: `_rollout_cost`'s
+  entire single-shooting rollout (all horizon steps chained into one graph)
+  gets one `torch.autograd` `.backward()` call per SQP iteration. This
+  required a real prerequisite fix — `GNN/data.py`'s `build_node_features`
+  originally broke autograd for the control inputs (constructed a fresh,
+  non-differentiable tensor from plain Python floats each call); fixed via
+  `torch.as_tensor`/`torch.stack` so a grad-tracking tensor flows through
+  unchanged while the existing plain-float training path is untouched.
+- **Cost function**: `sum_k ||x_k - x_ref||_Q^2` over the horizon, `Q =
+  identity` over the full surface field (no per-node/per-axis weighting —
+  a default, not a considered choice; worth revisiting if certain regions
+  should matter more than others). `x_ref` is a **fixed target for every
+  step** (a real rollout's true final-hit geometry, from the held-out test
+  set) — there's no time-varying intermediate reference, so this
+  deliberately pulls early states toward the final shape too, which shows
+  up in practice as several controls landing exactly on their bounds
+  (see "Validation results" below).
+- **Control bounds**: taken directly from what `generate_dataset.py`'s
+  sampler actually used — `d_j_frac in [0.02, 0.78]` (edge_margin_frac=0.02,
+  band_width_frac=0.2 defaults), `R_j_deg in [0, 360)` (periodic; optimizing
+  a plain bounded scalar rather than `(sin,cos)` + unit-circle constraint is
+  a deliberate simplification, fine unless the true optimum sits at the
+  wraparound), `u_j_frac in [0, 1]` (already normalized by construction).
+- **Thermal relaxation ramp between real hits: included, not skipped.**
+  `plant_interface.ForgingPlant.step()` mirrors `generate_dataset.py`'s
+  10-step reheat-and-reequilibrate ramp exactly. This was a real fork: the
+  GNN was trained exclusively on data generated *with* this ramp, so
+  skipping it would put every real state the MPC re-plans from
+  systematically out-of-distribution relative to training.
+- **Failure handling: fail-fast, no retry.** `ForgingPlant.step` raises on
+  solver non-convergence, matching `generate_dataset.py`'s own convention —
+  a silent retry-with-different-control could mask a real problem with the
+  planned control rather than surfacing it.
+- **Warm-starting**: `run()`'s receding-horizon loop seeds each re-plan's
+  SQP initial guess from the previous plan's un-applied tail (shifted by
+  one), rather than a fresh generic guess every step — cheap to add, real
+  reduction in iterations needed per step since each successive plan is a
+  shorter version of a similar problem.
 
-Because every planned control is applied to the *real* plant (not just
-predicted), `MPCController.run`'s plan-vs-actual mismatch at each step is a
-direct, ongoing measurement of Koopman surrogate quality — worth logging
-explicitly, not just the final control performance.
+## Validation results
+
+**Open-loop** (`validate_open_loop.py`): a single SQP-planned 5-step control
+sequence, computed once against the GNN surrogate targeting a real held-out
+rollout's true hit-5 geometry, applied to the real plant with no
+re-planning. Real-plant result: **0.1536mm RMSE** against the target — the
+GNN's own internal prediction for this plan was 0.152mm, i.e. the real
+result matched the surrogate's prediction almost exactly (0.002mm gap). By
+comparison, replaying the target rollout's *actual real controls* through
+the GNN scored 0.627mm — the SQP-found plan did meaningfully better than
+just repeating the true trajectory, evaluated through the same surrogate.
+
+**Closed-loop** (`run_closed_loop.py`, `MPCController.run()`): re-plans from
+the plant's *true* post-hit state before every real hit (horizon shrinking
+5→4→3→2→1). Run against 5 independent held-out targets (`mpc_target_rollout_
+{415,416,417,418,419}/`, each definitionally never seen by
+`checkpoint_3dim.pt`'s training — completed by a later dataset-generation
+job after that checkpoint had already been trained):
+
+| target rollout | final RMSE | Chamfer (mm²) | Hausdorff (mm) |
+|---|---|---|---|
+| 415 | 0.166mm | 0.165 | 0.795 |
+| 416 | 0.196mm | 0.229 | 0.834 |
+| 417 | 0.268mm | 0.378 | 1.218 |
+| 418 | 0.189mm | 0.207 | 1.014 |
+| 419 | 0.201mm | 0.241 | 1.168 |
+
+All 5 in the same range (0.17-0.27mm RMSE) — no target is dramatically
+easier or harder than the others, though 417/418/419's larger Hausdorff
+values (>1mm, vs. 415/416's <0.85mm) suggest some targets leave a more
+localized worst-case mismatch than others even at similar average error.
+
+**Caveat, stated plainly**: none of this is proof the surrogate's plans are
+*better forging schedules* in some general sense — the cost function
+literally optimizes the GNN's own predictions, so a plan that beats the
+true trajectory *through the GNN* isn't automatically beating it in
+reality. What the open-loop result actually shows is that, for this one
+case, the surrogate's planning signal transferred to the real plant with
+very little degradation — encouraging, but a single data point, not a
+general guarantee.
+
+## Per-step output for animation
+
+Each `mpc_target_rollout_{id}/` folder holds `target.vtu` (the true target
+geometry) plus `step_00.vtu` (undeformed) through `step_05.vtu` (state after
+each real hit) as surface-mesh `.vtu` files, saved incrementally via
+`MPCController.run()`'s `step_callback` — so a crash/timeout partway through
+a multi-hour closed-loop run still leaves usable partial output. Intended
+for stringing together into an animation of the controlled forging sequence
+against its target.
+
+## Open items
+
+- **Cost function's Q and same-target-at-every-step choices are defaults,
+  not settled decisions** — worth reconsidering (a terminal-only cost, or a
+  reduced/weighted Q) given the bound-pinning pattern observed across every
+  closed-loop run so far.
+- **Message-passing depth**: `MPCController` currently uses `checkpoint_
+  3dim.pt` (M=15). `../GNN/README.md`'s depth sweep found M=5 matches or
+  beats M=15 on every accuracy metric at a fraction of the planning cost
+  (3.28 min vs. 9-16 min per full SQP solve) — switching the control loop's
+  default model is a live option, not yet done.
+- **Only 5 closed-loop targets tested**, all drawn from the same held-out
+  snapshot region; no systematic study of which targets are easy/hard yet.

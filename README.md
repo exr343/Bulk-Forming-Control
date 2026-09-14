@@ -3,8 +3,10 @@
 A differentiable, GPU-accelerated simulation of multi-hit rotational forging, built for a CIRP 2027 submission. This repo is being developed into a 3-stage pipeline:
 
 1. **Data generation** (done) — `applications/Agility_Forge/generate_dataset.py` runs randomized multi-hit forging rollouts against the forging simulation and records the resulting state trajectories.
-2. **Koopman Autoencoder training** (scaffolded, not yet implemented) — `applications/Agility_Forge/koopman/` will learn a latent linear-dynamics surrogate of the forging state from stage-1 rollouts.
-3. **MPC control loop** (scaffolded, not yet implemented) — `applications/Agility_Forge/control/` will use the trained Koopman model as the fast predictive model inside a receding-horizon controller, validating every planned control against the real simulation as the plant.
+2. **GNN surrogate model** (implemented and trained against the full 3D actuation space) — `applications/Agility_Forge/GNN/` learns a MeshGraphNets-style surrogate of the forging state from stage-1 rollouts. Die axial position, die orientation, *and* strike depth (`Uniform(0.5, 2.0)`mm, range grounded in the JAX-FORGE paper's reported forging depths) are all independently randomized per hit. A message-passing-depth sweep (1/5/15/45/135 steps) found accuracy saturates at ~5 steps with no benefit from going deeper. The earlier 2D-actuation version (strike depth held fixed at 2.5mm — later found to be an undocumented placeholder, not a validated value) is preserved for reference at `data/dataset_2dim`/`GNN/runs_2dim/`. See [GNN/README.md](applications/Agility_Forge/GNN/README.md) for design decisions and results.
+3. **MPC control loop** (implemented and validated against the real plant) — `applications/Agility_Forge/control/` uses the trained GNN surrogate as the fast predictive model inside a single-shooting SQP-BFGS receding-horizon controller, validating every planned control against the real simulation as the plant. Open-loop and closed-loop runs against held-out targets both land in the 0.15-0.27mm RMSE range. See [control/README.md](applications/Agility_Forge/control/README.md) for design decisions and validation results.
+
+An earlier Koopman Autoencoder surrogate (`applications/Agility_Forge/koopman/`) was explored for stage 2; the GNN surrogate above is now the active approach.
 
 ## The forging simulation
 

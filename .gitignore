@@ -28,6 +28,15 @@ applications/Agility_Forge/slurm_logs/
 applications/Agility_Forge/koopman/runs/
 *.pt
 
+# GNN training artifacts (metrics, loss-curve plots, eval .vtu dumps) --
+# regenerable by re-running GNN/train.py, not source. Same convention as
+# koopman/runs/ above. rollout_snapshot_383.json and the small eval-result
+# summary .json files under mp_sweep/ are kept tracked (they define/record
+# the message-passing-depth comparison itself, not bulky regenerable output).
+applications/Agility_Forge/GNN/runs_2dim/
+applications/Agility_Forge/GNN/runs_3dim/
+applications/Agility_Forge/GNN/mp_sweep/mp_*/
+
 # SVD/POD analysis output (singular values, effective-dimension json, plot)
 # — regenerable by re-running svd_analysis.py, not source.
 applications/Agility_Forge/SVD/runs/
