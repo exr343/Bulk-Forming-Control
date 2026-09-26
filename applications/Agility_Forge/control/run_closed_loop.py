@@ -41,9 +41,13 @@ def _save_surface_vtu(mesh_info, displacement, out_path):
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--target-rollout", type=int, required=True,
-                   help="Rollout id (from data/dataset) whose hit_05_final.vtu is the MPC target.")
-    p.add_argument("--dataset-dir", default="applications/Agility_Forge/data/dataset")
+                   help="Rollout id (from data/dataset_pretraining) whose hit_05_final.vtu is the MPC target.")
+    p.add_argument("--dataset-dir", default="applications/Agility_Forge/data/dataset_pretraining")
     p.add_argument("--checkpoint-path", default="applications/Agility_Forge/GNN/checkpoint_3dim.pt")
+    p.add_argument("--message-passing-steps", type=int, default=15,
+                   help="Must match the checkpoint's own training config (e.g. 5 for any "
+                        "GNN/mp_sweep/checkpoint_mp_5*.pt).")
+    p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     p.add_argument("--out-dir", required=True)
     return p.parse_args()
 
@@ -54,7 +58,8 @@ def main():
 
     mesh_info = build_surface_mesh_info(
         os.path.join(args.dataset_dir, "rollout_01", "undeformed.vtu"))
-    model = ForgeGNN(mesh_info, latent_size=128, num_layers=2, message_passing_steps=15)
+    model = ForgeGNN(mesh_info, latent_size=128, num_layers=2,
+                      message_passing_steps=args.message_passing_steps)
     ckpt = torch.load(args.checkpoint_path, map_location="cpu", weights_only=False)
     model.load_state_dict(ckpt["state_dict"])
 
@@ -65,7 +70,7 @@ def main():
     _save_surface_vtu(mesh_info, target, os.path.join(args.out_dir, "target.vtu"))
 
     controller = MPCController(model, mesh_info, horizon=5, target_state=target,
-                                band_width_frac=0.2, device="cpu")
+                                band_width_frac=0.2, device=args.device)
 
     mesh, R, H, T_linear_fn = load_default_billet()
     plant = ForgingPlant(mesh, R, H, T_linear_fn)
@@ -79,7 +84,7 @@ def main():
         _save_surface_vtu(mesh_info, surf, os.path.join(args.out_dir, f"step_{step_idx + 1:02d}.vtu"))
         print(f"Saved step_{step_idx + 1:02d}.vtu", flush=True)
 
-    applied_controls, plan_vs_actual_rmse_mm, final_state = controller.run(
+    applied_controls, plan_vs_actual_rmse_mm, plan_time_s, final_state = controller.run(
         plant, n_hits=5, step_callback=step_callback)
 
     actual_final = extract_surface_state(final_state.sol_u, mesh_info)
@@ -103,6 +108,7 @@ def main():
             "target_rollout": args.target_rollout,
             "applied_controls": applied_controls,
             "plan_vs_actual_rmse_mm": plan_vs_actual_rmse_mm,
+            "plan_time_s": plan_time_s,
             "final_rmse_vs_target_mm": final_rmse,
             "final_chamfer_mm2": final_chamfer_mm2,
             "final_hausdorff_mm": final_hausdorff_mm,

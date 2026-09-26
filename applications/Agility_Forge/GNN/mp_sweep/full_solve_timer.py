@@ -29,7 +29,7 @@ def main():
         f"applications/Agility_Forge/GNN/mp_sweep/checkpoint_mp_{args.message_passing_steps}.pt")
 
     mesh_info = build_surface_mesh_info(
-        "applications/Agility_Forge/data/dataset/rollout_01/undeformed.vtu")
+        "applications/Agility_Forge/data/dataset_pretraining/rollout_01/undeformed.vtu")
     model = ForgeGNN(mesh_info, latent_size=128, num_layers=2,
                       message_passing_steps=args.message_passing_steps)
     ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)

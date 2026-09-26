@@ -13,13 +13,13 @@
 # submitted directly -- launched by a loop (see chat/session history) that
 # sets DATASET_SUFFIX per submission via `sbatch --export=ALL,DATASET_SUFFIX=NN`
 # purely for --job-name/log-naming; all shards write into the SAME
-# data/dataset/ dir. Safe to do so as of the ManifestWriter/rollout-index
+# data/dataset_pretraining/ dir. Safe to do so as of the ManifestWriter/rollout-index
 # locking fix (fcntl.flock-based, see generate_dataset.py) -- stress-tested
 # with 12 concurrent workers writing the same dir (no lost records, no
 # overlapping rollout-index ranges) before pointing real jobs at it.
 #
 # CAVEAT: the lock is advisory and only protects processes that go through
-# it. Job 3747184 (appending to data/dataset/, started before this fix
+# it. Job 3747184 (appending to data/dataset_pretraining/, started before this fix
 # existed) is running OLD code with no knowledge of the lock -- it can't be
 # retroactively patched without restarting it and losing its progress, so
 # there's a narrow (low-probability -- 3747184 only touches manifest.json

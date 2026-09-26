@@ -54,12 +54,23 @@ assumed). `mpc.MPCController` implements single-shooting SQP planning
   deliberately pulls early states toward the final shape too, which shows
   up in practice as several controls landing exactly on their bounds
   (see "Validation results" below).
-- **Control bounds**: taken directly from what `generate_dataset.py`'s
-  sampler actually used — `d_j_frac in [0.02, 0.78]` (edge_margin_frac=0.02,
-  band_width_frac=0.2 defaults), `R_j_deg in [0, 360)` (periodic; optimizing
-  a plain bounded scalar rather than `(sin,cos)` + unit-circle constraint is
-  a deliberate simplification, fine unless the true optimum sits at the
-  wraparound), `u_j_frac in [0, 1]` (already normalized by construction).
+- **Control bounds**: `d_j_frac in [0.02, 0.78]` and `R_j_deg in [0, 360)`
+  taken directly from what `generate_dataset.py`'s sampler actually used
+  (edge_margin_frac=0.02, band_width_frac=0.2 defaults; `R_j_deg` periodic —
+  optimizing a plain bounded scalar rather than `(sin,cos)` + unit-circle
+  constraint is a deliberate simplification, fine unless the true optimum
+  sits at the wraparound). `u_j_frac in [0, 1]`, mapping to physical
+  `u_j_mm in [0.0, 2.0]` (`MPCController`'s `u_j_mm_min`/`u_j_mm_max`,
+  default `mpc.U_J_MM_MIN`/`U_J_MM_MAX`) — **not** the training data's
+  literal 0.5-2.0mm sampled range. An extended-horizon pilot
+  (`control/mpc_target_rollout_415_10hits/`) showed the 0.5mm floor gives
+  receding-horizon MPC no way to choose "no hit": once already near target,
+  every remaining required hit is forced to apply real plastic deformation,
+  which plateaued Chamfer and made Hausdorff creep upward hit-over-hit
+  rather than staying flat. Lowering the floor to 0.0 let the optimizer
+  choose a genuine near-zero stroke instead, and Hausdorff stayed flat.
+  Accepted tradeoff: `u_j` in `[0, 0.5)`mm is outside what
+  `generate_dataset.py` ever sampled, so the GNN is extrapolating there.
 - **Thermal relaxation ramp between real hits: included, not skipped.**
   `plant_interface.ForgingPlant.step()` mirrors `generate_dataset.py`'s
   10-step reheat-and-reequilibrate ramp exactly. This was a real fork: the
@@ -128,6 +139,16 @@ for stringing together into an animation of the controlled forging sequence
 against its target.
 
 ## Open items
+
+- **Finetuned surrogate not yet used here.** `GNN/finetune_square/checkpoint_mp_5_finetuned_square.pt`
+  (finetuned on scheduled square-rod rollouts with pretraining replay; see
+  `GNN/README.md`) predicts a full 48-hit square-forming rollout far better
+  than `checkpoint_mp_5.pt` (final-hit Hausdorff 2.1mm vs. 17.5mm). The eval
+  scripts here still default to the un-finetuned checkpoints. A square-rod
+  MPC target also needs a planning horizon far beyond the 5-10 hits tested so far.
+- **`U_J_MM_MAX = 2.0` is a surrogate-validity bound, not a die limit.** The
+  square-rod rollouts show the 2mm per-hit stroke cap binding often (9-26 of
+  44-48 hits per run), so those runs end short of their planned sizes.
 
 - **Cost function's Q and same-target-at-every-step choices are defaults,
   not settled decisions** — worth reconsidering (a terminal-only cost, or a

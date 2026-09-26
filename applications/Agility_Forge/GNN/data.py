@@ -231,7 +231,14 @@ def build_node_features(mesh_info: SurfaceMeshInfo, x_k: torch.Tensor, d_j_frac:
     eval (where `x_k` is the model's own previous prediction), so both paths
     build features identically."""
     band_center_mm = 0.5 * (d_j_mm + x_max_band_mm)
-    dist_to_band = mesh_info.rest_pos[:, 0:1] - band_center_mm
+    # .to(x_k.device): d_j_mm/x_max_band_mm are plain floats on the training
+    # path (band_center_mm stays a float, device-agnostic), but control/
+    # mpc.py's SQP rollout passes grad-tracking tensors for these -- on GPU,
+    # band_center_mm is then a CUDA tensor, and mesh_info.rest_pos (always
+    # CPU, unlike ForgeGNN's own device-moved buffer copy of it) would
+    # mismatch without this. Latent bug: every prior MPC run used
+    # device="cpu", where the two device strings just happened to match.
+    dist_to_band = mesh_info.rest_pos[:, 0:1].to(x_k.device) - band_center_mm
 
     # torch.as_tensor (not torch.tensor) so a grad-tracking tensor passed in
     # from control/mpc.py's SQP planner (differentiating the GNN w.r.t.

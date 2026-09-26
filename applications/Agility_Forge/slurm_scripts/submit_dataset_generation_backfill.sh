@@ -20,7 +20,7 @@
 # this still runs (and reports) even if one of them fails, rather than
 # hanging forever.
 #
-# Scans every rollout_* dir in data/dataset for a complete state sequence
+# Scans every rollout_* dir in data/dataset_pretraining for a complete state sequence
 # (undeformed.vtu + n_hits hit_XX_final.vtu files, per manifest.json's
 # n_hits_per_rollout). Any rollout short of that -- including the known
 # straggler #170 (stalled at 2/5 hits from the earlier pre-locking-fix
@@ -49,11 +49,11 @@ echo "Host: $(hostname)"
 echo "--- Parent job final states ---"
 sacct -j 3794407,3795300 -o JobID,JobName,State,ExitCode -X
 
-echo "--- Scanning data/dataset for incomplete rollouts ---"
+echo "--- Scanning data/dataset_pretraining for incomplete rollouts ---"
 python3 - <<'PYEOF' 1>&2
 import glob, os, json
 
-dataset_dir = "applications/Agility_Forge/data/dataset"
+dataset_dir = "applications/Agility_Forge/data/dataset_pretraining"
 with open(os.path.join(dataset_dir, "manifest.json")) as f:
     meta = json.load(f)
 n_hits = meta["n_hits_per_rollout"]

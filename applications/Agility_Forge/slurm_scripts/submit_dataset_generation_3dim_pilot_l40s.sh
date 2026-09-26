@@ -30,8 +30,8 @@
 # u_j (strike depth) as a third independently-randomized per-hit parameter,
 # Uniform(0.5, 2.0)mm -- range grounded in the JAX-FORGE paper's reported
 # forging depths (0.62mm, 1.63mm) for this same billet geometry (diameter
-# 15.9mm round stock). Writes to the default data/dataset path (fresh; the
-# old 2D-actuation dataset is preserved at data/dataset_2dim).
+# 15.9mm round stock). Writes to the default data/dataset_pretraining path (fresh; the
+# old 2D-actuation dataset is preserved at data/backup/dataset_2dim).
 #
 # --n-rollouts 50: a deliberate pilot, not the final dataset size -- confirms
 # the new (wider) strike-depth range doesn't introduce solver convergence

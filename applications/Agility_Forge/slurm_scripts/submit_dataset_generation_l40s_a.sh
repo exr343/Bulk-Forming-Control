@@ -14,15 +14,15 @@
 # Submit with:  sbatch submit_dataset_generation_l40s_a.sh
 #
 # Writes to its OWN fresh dataset dir (data/dataset_l40s_a), not the live
-# data/dataset/ -- generate_dataset.py's ManifestWriter isn't safe for
+# data/dataset_pretraining/ -- generate_dataset.py's ManifestWriter isn't safe for
 # concurrent writers (reads the whole manifest.json, overwrites it whole on
-# every save), and job 3747184 (appending to data/dataset/) is still
+# every save), and job 3747184 (appending to data/dataset_pretraining/) is still
 # running as of this job's submission. Running this alongside
 # submit_dataset_generation_l40s_b.sh (also its own separate dir) on two
 # L40S GPUs avoids any shared-file race between all three jobs.
 #
 # rollout_l40s_a/ starts numbering at 1 (fresh dir) -- merging into the main
-# data/dataset/ corpus is a deliberate later step, not automatic.
+# data/dataset_pretraining/ corpus is a deliberate later step, not automatic.
 
 set -euo pipefail
 

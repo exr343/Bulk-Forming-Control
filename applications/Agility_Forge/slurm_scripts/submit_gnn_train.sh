@@ -25,7 +25,7 @@
 # estimate, not a fact -- check slurm_logs/%x_%j.out for the actual
 # per-epoch timings this run reports).
 #
-# Trains against the live data/dataset/ (338 complete rollouts as of this
+# Trains against the live data/dataset_pretraining/ (338 complete rollouts as of this
 # submission), not a frozen snapshot -- confirmed via `squeue -u exr343`
 # that no generate_dataset.py job is currently running against it, so there
 # is no risk of reading a torn manifest.json (see CLAUDE.md's note on
@@ -56,7 +56,7 @@ echo "GPU assigned:"
 nvidia-smi --query-gpu=name,memory.total --format=csv || echo "(nvidia-smi not available)"
 
 python -m applications.Agility_Forge.GNN.train \
-    --dataset-dir applications/Agility_Forge/data/dataset \
+    --dataset-dir applications/Agility_Forge/data/dataset_pretraining \
     --batch-size 16 \
     --epochs 100 \
     --patience 20

@@ -18,7 +18,7 @@ from applications.Agility_Forge.GNN.data import (
 )
 from applications.Agility_Forge.GNN.train import _chamfer_hausdorff_mm
 
-DATASET_DIR = "applications/Agility_Forge/data/dataset"
+DATASET_DIR = "applications/Agility_Forge/data/dataset_pretraining"
 SNAPSHOT_PATH = "applications/Agility_Forge/GNN/mp_sweep/rollout_snapshot_383.json"
 
 

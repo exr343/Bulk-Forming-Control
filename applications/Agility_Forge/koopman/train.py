@@ -2,7 +2,7 @@
 
 Usage:
     python -m applications.Agility_Forge.koopman.train \\
-        --dataset-dir applications/Agility_Forge/data/dataset \\
+        --dataset-dir applications/Agility_Forge/data/dataset_pretraining \\
         --latent-dim 512 --epochs 100
 
 Trained over a window of K+1 = n_hits_per_rollout+1 consecutive states and K
@@ -72,7 +72,7 @@ LOSS_TERM_EXPLANATIONS = {
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument("--dataset-dir", default="applications/Agility_Forge/data/dataset")
+    parser.add_argument("--dataset-dir", default="applications/Agility_Forge/data/dataset_pretraining")
     parser.add_argument("--train-frac", type=float, default=0.8, help="Fraction of rollouts used for training.")
 
     parser.add_argument("--n-pod-modes", type=int, default=75,

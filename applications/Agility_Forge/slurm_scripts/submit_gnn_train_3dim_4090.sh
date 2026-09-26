@@ -14,7 +14,7 @@
 # Submit with:  sbatch slurm_scripts/submit_gnn_train_3dim_4090.sh
 # (must be submitted with CWD at repo root)
 #
-# First GNN training run against the 3D-actuation dataset (data/dataset,
+# First GNN training run against the 3D-actuation dataset (data/dataset_pretraining,
 # u_j now a third independently-randomized control dim alongside d_j/R_j).
 # Prerequisite done just before this run: data.py/model.py updated to encode
 # u_j as u_j_frac = (u_j_mm - min)/(max - min), appended raw/unnormalized to
@@ -40,7 +40,7 @@
 # statistics still shifting -- a strict first-rise stop risks tripping on
 # that exact known instability rather than real overfitting.
 #
-# Dataset note: data/dataset currently has 383 complete rollouts, with a
+# Dataset note: data/dataset_pretraining currently has 383 complete rollouts, with a
 # gap-fill job (targeting 400) running in the background against the same
 # directory. This run reads whatever's on disk at start (load_examples()
 # is a one-time snapshot, not live-updating) -- not blocked on the gap-fill
@@ -61,7 +61,7 @@ echo "GPU assigned:"
 nvidia-smi --query-gpu=name,memory.total --format=csv || echo "(nvidia-smi not available)"
 
 python -m applications.Agility_Forge.GNN.train \
-    --dataset-dir applications/Agility_Forge/data/dataset \
+    --dataset-dir applications/Agility_Forge/data/dataset_pretraining \
     --epochs 100 \
     --patience 20 \
     --out-dir applications/Agility_Forge/GNN/runs_3dim \

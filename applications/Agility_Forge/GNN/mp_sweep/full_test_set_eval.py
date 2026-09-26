@@ -24,7 +24,7 @@ from applications.Agility_Forge.GNN.model import ForgeGNN
 from applications.Agility_Forge.GNN.train import _chamfer_hausdorff_mm
 
 MP_STEPS_LIST = [5, 15, 45, 135]
-DATASET_DIR = "applications/Agility_Forge/data/dataset"
+DATASET_DIR = "applications/Agility_Forge/data/dataset_pretraining"
 SNAPSHOT_PATH = "applications/Agility_Forge/GNN/mp_sweep/rollout_snapshot_383.json"
 
 

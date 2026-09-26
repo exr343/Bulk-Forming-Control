@@ -36,7 +36,7 @@ from applications.Agility_Forge.GNN.model import ForgeGNN
 from applications.Agility_Forge.control.mpc import _rollout_cost
 
 mp_steps = $MP_STEPS
-mesh_info = build_surface_mesh_info('applications/Agility_Forge/data/dataset/rollout_01/undeformed.vtu')
+mesh_info = build_surface_mesh_info('applications/Agility_Forge/data/dataset_pretraining/rollout_01/undeformed.vtu')
 model = ForgeGNN(mesh_info, latent_size=128, num_layers=2, message_passing_steps=mp_steps)
 model.eval()
 H_mm = float(mesh_info.rest_pos[:, 0].max().item())

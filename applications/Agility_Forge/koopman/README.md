@@ -11,7 +11,7 @@ as the fast predictive model inside the MPC loop (`../control/`, stage 3).
 ## Data source
 
 `generate_dataset.py` writes `manifest.json` + one `.vtu` per saved state
-(`undeformed`, and `hit_final` per hit) under `applications/Agility_Forge/data/dataset/`.
+(`undeformed`, and `hit_final` per hit) under `applications/Agility_Forge/data/dataset_pretraining/`.
 Each `.vtu` holds per-node `Displacement` (3-vec) and `Temperature` (scalar) on
 the shared billet mesh; each hit's manifest record carries its control inputs
 (`d_j` compression depth, `x_max_band` hit position, `R_j` rotation, `u_j`).

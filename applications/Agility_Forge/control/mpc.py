@@ -20,6 +20,8 @@ the direct measurement of GNN surrogate quality ./README.md's "Validation
 loop" section describes.
 """
 
+import time
+
 import numpy as onp
 import torch
 from scipy.optimize import minimize
@@ -40,7 +42,20 @@ N_CONTROLS = 3  # (d_j_frac, R_j_deg, u_j_frac) per step
 # simplification -- fine unless the true optimum sits at the wraparound.
 # u_j_frac in [0,1] by construction (data.py's own normalization).
 CONTROL_BOUNDS = [(0.02, 0.78), (0.0, 360.0), (0.0, 1.0)]
-U_J_MM_MIN, U_J_MM_MAX = 0.5, 2.0  # must match the dataset's actual generation range
+# U_J_MM_MIN settled at 0.0, NOT the training data's actual sampled floor
+# (0.5mm) -- an extended-horizon pilot (control/mpc_target_rollout_415_10hits/)
+# showed that with the 0.5mm floor, receding-horizon MPC has no way to choose
+# "no hit": once already near target, every remaining required hit is forced
+# to apply >=0.5mm of real plastic deformation somewhere, which plateaued
+# Chamfer and made Hausdorff (worst-case error) creep upward hit-over-hit
+# rather than staying flat. Lowering the floor to 0.0 let the optimizer
+# choose a genuine near-zero stroke instead (observed: u_j_mm=0.0 on
+# multiple hits once close to target), and Hausdorff stayed flat rather than
+# climbing. Accepted tradeoff: u_j in [0, 0.5)mm is outside the range
+# generate_dataset.py ever sampled, so the GNN is extrapolating there --
+# judged worth it given the alternative (forced continued disturbance) was
+# actively making results worse, not just untested.
+U_J_MM_MIN, U_J_MM_MAX = 0.0, 2.0
 TOTAL_TIME_S = 0.8  # per-hit duration; matches generate_dataset.py's default (never varied)
 
 
@@ -71,12 +86,24 @@ def _rollout_cost(u_flat, model, mesh_info, x0, H_mm, band_width_frac, x_ref, ho
 
 class MPCController:
     def __init__(self, model: ForgeGNN, mesh_info, horizon: int, target_state: torch.Tensor,
-                 band_width_frac: float, device: str = "cpu"):
+                 band_width_frac: float, device: str = "cpu",
+                 u_j_mm_min: float = U_J_MM_MIN, u_j_mm_max: float = U_J_MM_MAX):
+        """u_j_mm_min/max: physical range u_j_frac in [0,1] maps to, default
+        the module-level U_J_MM_MIN/MAX -- settled at 0.0/2.0 (NOT the
+        training data's literal 0.5-2.0mm sampled range; see U_J_MM_MIN's
+        own comment for why the floor was deliberately lowered). Overridable
+        per-instance for experiments that want the literal training-range
+        floor back (e.g. u_j_mm_min=0.5) or something else entirely. Does
+        not change CONTROL_BOUNDS's u_j_frac bound itself (still [0,1]) --
+        only what physical stroke frac=0 maps
+        to."""
         self.model = model.to(device).eval()
         self.mesh_info = mesh_info
         self.horizon = horizon
         self.target_state = target_state.to(device)  # (N_surface, 3) target displacement field
         self.band_width_frac = band_width_frac
+        self.u_j_mm_min = u_j_mm_min
+        self.u_j_mm_max = u_j_mm_max
         # H = max(x), NOT (max-min) -- must match generate_dataset.py's own
         # convention exactly (H = np.max(mesh.points[:, 0])), since d_j_frac/
         # u_j_frac were fit against THAT H. The billet's rest mesh does not
@@ -122,19 +149,25 @@ class MPCController:
         partway through.
 
         Raises whatever plant.step raises on solver non-convergence (no
-        retry -- matches generate_dataset.py's own fail-fast convention)."""
+        retry -- matches generate_dataset.py's own fail-fast convention).
+
+        Returns a 4th element, `plan_time_s` (list, one wall-clock seconds
+        entry per real step, timing just the `self.plan(...)` call -- not
+        the real-plant FEM solve), alongside the pre-existing three."""
         n_hits = n_hits or self.horizon
         state = plant.reset()
-        applied_controls, plan_vs_actual_rmse_mm = [], []
+        applied_controls, plan_vs_actual_rmse_mm, plan_time_s = [], [], []
 
         u_init = None  # warm-start: each plan's un-applied tail seeds the next (one step shorter)
         for step_idx in range(n_hits):
             remaining = n_hits - step_idx
             x0 = extract_surface_state(state.sol_u, self.mesh_info).to(self.device)
+            t0 = time.perf_counter()
             u_seq, _ = self.plan(x0, horizon=remaining, u_init=u_init)
+            plan_time_s.append(time.perf_counter() - t0)
             u_init = u_seq[1:].flatten() if remaining > 1 else None
             d_j_frac, R_j_deg, u_j_frac = [float(v) for v in u_seq[0]]
-            u_j_mm = U_J_MM_MIN + u_j_frac * (U_J_MM_MAX - U_J_MM_MIN)
+            u_j_mm = self.u_j_mm_min + u_j_frac * (self.u_j_mm_max - self.u_j_mm_min)
 
             # GNN's own prediction for this one step, for the plan-vs-actual
             # comparison below -- NOT what gets applied to the plant.
@@ -156,4 +189,4 @@ class MPCController:
             applied_controls.append((d_j_frac, R_j_deg, u_j_mm))
             plan_vs_actual_rmse_mm.append(((predicted_next - actual_next) ** 2).mean().sqrt().item())
 
-        return applied_controls, plan_vs_actual_rmse_mm, state
+        return applied_controls, plan_vs_actual_rmse_mm, plan_time_s, state

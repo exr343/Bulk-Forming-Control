@@ -49,7 +49,7 @@ Note: no springback / die-retraction step is modeled, matching main.py and
 main_random_hits.py exactly -- each hit's saved "final step" is the state
 with the die still fully advanced (scale=1), not a released/unloaded state.
 
-Output layout, under applications/Agility_Forge/data/dataset/:
+Output layout, under applications/Agility_Forge/data/dataset_pretraining/:
   manifest.json                       -- one record per saved .vtu (see below)
   rollout_01/undeformed.vtu           -- x_1 before any hit
   rollout_01/hit_01_final.vtu         -- x_1 after hit 1 (d_1, R_1, u_1)
@@ -274,7 +274,7 @@ def run_dataset_generation(n_rollouts=10, n_hits=10, seed=None, band_width_frac=
     # CLAUDE.md). msh_dir/assets_dir stay fixed: the mesh is a real input
     # asset, not per-run output.
     if dataset_dir is None:
-        dataset_dir = os.path.join(data_dir, "dataset")
+        dataset_dir = os.path.join(data_dir, "dataset_pretraining")
     assets_dir = os.path.join(msh_dir, "assets")
     stock_mesh_path = os.path.join(assets_dir, "0104-00_jaxforge_stock.obj")
     json_mesh_path = os.path.join(assets_dir, "0104-00_jaxforge_stock.json")
@@ -596,7 +596,7 @@ if __name__ == "__main__":
                               "stock end when sampling d_j, to avoid degenerate contact at the tip.")
     parser.add_argument("--dataset-dir", default=None,
                          help="Output directory for manifest.json + rollout_XX/. Defaults to "
-                              "data/dataset. Only point two concurrently-running invocations at "
+                              "data/dataset_pretraining. Only point two concurrently-running invocations at "
                               "the SAME dataset-dir if you've verified that's safe -- ManifestWriter "
                               "reads the whole manifest.json into memory and overwrites it whole on "
                               "every save, so two processes writing the same file at once can lose "

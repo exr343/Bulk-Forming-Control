@@ -18,7 +18,7 @@
 # u_j in Uniform(0.5, 2.0)mm), but with NO --constraint -- requested on the
 # generic `gpu` partition so SLURM can place it on whatever GPU node is free
 # fastest, rather than waiting specifically for an L40S or H100. Appends to
-# the same data/dataset dir as the other 3D-actuation runs; safe to run
+# the same data/dataset_pretraining dir as the other 3D-actuation runs; safe to run
 # concurrently since generate_dataset.py's ManifestWriter uses flock-based
 # locking (see generate_dataset.py) as of 2026-09-07.
 #

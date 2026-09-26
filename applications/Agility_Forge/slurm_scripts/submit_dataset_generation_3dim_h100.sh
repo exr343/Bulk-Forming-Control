@@ -16,7 +16,7 @@
 #
 # H100 variant of submit_dataset_generation_3dim_pilot_l40s.sh: same
 # 3D-actuation-space config (u_j randomized Uniform(0.5, 2.0)mm alongside
-# d_j/R_j) so it appends to the SAME data/dataset dir rather than tripping
+# d_j/R_j) so it appends to the SAME data/dataset_pretraining dir rather than tripping
 # ManifestWriter's config-mismatch check. Adds 100 more rollouts (not a
 # pilot-sized batch -- the l40s/l40s-pilot runs already validated that this
 # actuation range doesn't cause solver convergence problems).

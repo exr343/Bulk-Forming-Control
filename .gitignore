@@ -66,3 +66,12 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Collaborator-provided target geometries, die model and toolpaths -- shared
+# with us for this work, not ours to publish in a public repo.
+OSU_materials/
+
+# GNN finetuning output (metrics, plots, eval .vtu dumps; wiped and
+# regenerated on every submit_gnn_finetune_square.sh run). Results are
+# recorded in GNN/README.md.
+applications/Agility_Forge/GNN/finetune_square/

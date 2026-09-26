@@ -86,6 +86,11 @@ avoid colliding with them — the vendored files are untouched).
   not the true per-hit `x_k`) and dumped as true/predicted `.vtu` pairs plus
   a per-hit RMSE/NRMSE curve in `metrics.json`. See "Loss function & reported
   metrics" below for exactly what is optimized vs. what is only reported.
+- `finetune.py` — finetunes a pretrained checkpoint on the scheduled
+  square-rod runs in `data/dataset_finetuning/`, reusing `train.py`'s loss,
+  metrics and early stopping. Evaluates the pretrained and finetuned models
+  on the test run and on the pretraining test split (forgetting check). See
+  "Finetuning on square-rod data" below.
 
 ## Data source
 
@@ -103,8 +108,8 @@ existing convention exactly rather than routing it through the
 earlier 2D-actuation dataset (`u_j` fixed at 2.5mm, later found to be an
 undocumented placeholder value — *deeper* than either of the JAX-FORGE
 paper's reported real forging depths, not a validated setting) is preserved
-at `data/dataset_2dim` and the model trained on it at `runs_2dim/`, kept for
-reference but superseded by the 3D-actuation dataset (`data/dataset`) and
+at `data/backup/dataset_2dim` and the model trained on it at `runs_2dim/`, kept for
+reference but superseded by the 3D-actuation dataset (`data/dataset_pretraining`) and
 `checkpoint_3dim.pt`/`runs_3dim/`.
 
 **Known bug, fixed**: `_chamfer_hausdorff_mm` in `train.py` was originally
@@ -134,14 +139,14 @@ treating `u_j` as a fixed CLI-level argument shared by the whole dataset
 (`compression_displacement_mm: 2.5`, unchanged across all `generation_runs`),
 never sampled.
 
-**Actual dataset scale, 2D-actuation** (`data/dataset_2dim`, `runs_2dim/`'s
+**Actual dataset scale, 2D-actuation** (`data/backup/dataset_2dim`, `runs_2dim/`'s
 training run): `n_hits_per_rollout=5`, 338 rollouts with all 5 hits complete
 → **1,690 single-step training pairs**. This is the number that grounds the
 model-sizing decision in "Network shape" below (kept at this size for the
 3D-actuation training too, rather than scaled up — see "Message-passing
 depth sweep").
 
-**Actual dataset scale, 3D-actuation** (`data/dataset`, `checkpoint_3dim.pt`
+**Actual dataset scale, 3D-actuation** (`data/dataset_pretraining`, `checkpoint_3dim.pt`
 and the `mp_sweep/` comparison): 400 complete rollouts total, of which a
 fixed **383-rollout snapshot** (306 train / 77 test, by-rollout prefix
 split) is used for every model in this doc and in `mp_sweep/` — pinned via
@@ -534,11 +539,38 @@ produced them; summary:
   current M=15 default to M=5 (a real, measured full SQP solve: 3.28 min at
   M=5 vs. 9-16 min at M=15).
 
+## Finetuning on square-rod data (`finetune.py`, `finetune_square/`)
+
+`checkpoint_mp_5.pt` finetuned on scheduled square-rod rollouts from
+`data/dataset_finetuning/` (`generate_square_rollout.py`: a 48-hit
+simple_square-inspired schedule plus jittered variants). Same per-node MSE
+loss, AdamW lr 1e-5, normalizers frozen at their pretrained statistics,
+early stopping on the test run (patience 20). Test run: `square_jitter_seed3`
+(held out of training, but it also selects the early-stopping epoch, so its
+scores are slightly optimistic). "Hit 48" is the end of a full 48-hit
+autoregressive rollout from the undeformed billet. The last column is the
+forgetting check: one-hit-ahead NRMSE on the 77-rollout pretraining test
+split.
+
+| Model | Chamfer, hit 48 (mm²) | Hausdorff, hit 48 (mm) | RMSE, hit 48 (mm) | Pretraining-test NRMSE |
+|---|---|---|---|---|
+| Pretrained (`checkpoint_mp_5.pt`) | 23.79 | 17.46 | 4.39 | 0.298 |
+| Finetune 1: square + seeds 1-2 (144 hits), no replay | 0.93 | 2.57 | 0.53 | 0.402 |
+| **Finetune 2: square + seeds 1-2, 4-9 (432 hits) + equal pretraining replay** | **0.91** | **2.11** | **0.52** | **0.298** |
+
+Finetune 2 (`--replay-ratio 1.0`: each epoch adds 432 freshly drawn
+pretraining-train hits; best epoch 116 of 136, 20 min on an L40S) is the
+current checkpoint, `finetune_square/checkpoint_mp_5_finetuned_square.pt`.
+It matches or beats finetune 1 on the square and shows no forgetting.
+Finetune 1's checkpoint was deleted; the table row is its only record.
+`finetune_square/` is wiped at the start of every
+`submit_gnn_finetune_square.sh` run, so record results here.
+
 ## Running
 
 ```bash
 python -m applications.Agility_Forge.GNN.train \
-    --dataset-dir applications/Agility_Forge/data/dataset --epochs 100
+    --dataset-dir applications/Agility_Forge/data/dataset_pretraining --epochs 100
 ```
 
 Run on a GPU node (`cluster_setup.md`), not a login node — see `train.py`'s

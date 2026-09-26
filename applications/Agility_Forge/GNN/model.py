@@ -169,7 +169,8 @@ class ForgeGNN(nn.Module):
         return self.output_normalizer.inverse(pred_delta_n)
 
     def loss(self, node_features_raw: torch.Tensor, x_k: torch.Tensor,
-             target_delta: torch.Tensor) -> torch.Tensor:
+             target_delta: torch.Tensor, chamfer_weight: float = 0.0,
+             hausdorff_weight: float = 0.0) -> torch.Tensor:
         """Per-node MSE in normalized-target space -- exactly
         `sum_c (pred_delta_norm - target_delta_norm)_c^2` averaged over every
         node and every example in the batch, where `pred_delta_norm` is the
@@ -183,17 +184,41 @@ class ForgeGNN(nn.Module):
         for why this is *not* the same quantity as the NRMSE train.py plots
         (a physical-units diagnostic, not the optimized objective).
         No node is masked out of this loss -- see GNN/README.md's resolved
-        "Loss masking" decision."""
-        loss, _ = self.loss_and_predict(node_features_raw, x_k, target_delta)
+        "Loss masking" decision.
+
+        chamfer_weight/hausdorff_weight: see loss_and_predict's docstring --
+        both 0.0 by default (this method's long-standing behavior, unchanged
+        unless a caller explicitly opts in)."""
+        loss, _ = self.loss_and_predict(node_features_raw, x_k, target_delta,
+                                         chamfer_weight, hausdorff_weight)
         return loss
 
     def loss_and_predict(self, node_features_raw: torch.Tensor, x_k: torch.Tensor,
-                          target_delta: torch.Tensor):
+                          target_delta: torch.Tensor, chamfer_weight: float = 0.0,
+                          hausdorff_weight: float = 0.0):
         """Same computation as `loss()`, but also returns the denormalized
         (physical-units) prediction from the same forward pass -- avoids
         running the encoder/processor/decoder twice when a caller (train.py's
         NRMSE tracking) needs both the training loss and a physical-space
-        prediction for the same inputs."""
+        prediction for the same inputs.
+
+        chamfer_weight/hausdorff_weight (both 0.0 by default -- opt-in only,
+        does not change behavior for any existing caller that doesn't pass
+        them): adds a DIFFERENTIABLE batched Chamfer/Hausdorff term (absolute
+        positions, rest_pos + x_k + delta -- the same "corrected convention"
+        train.py's own reporting-only _chamfer_hausdorff_mm uses) on top of
+        the per-node MSE above. This is a deliberate departure from this
+        module's original design (see the per-node-MSE docstring above and
+        _chamfer_hausdorff_mm's in train.py): per-node correspondence is
+        already known here, so these terms are strictly weaker supervision
+        than the MSE already being optimized, and Hausdorff in particular
+        (a max) gives nonzero gradient to only the single worst-case node
+        per example per step -- everything else gets zero signal from this
+        term. Included anyway as an explicit experiment, not a new default.
+        Also real added cost: an (B, N, N) cdist matrix computed WITH
+        gradients every training step (not just occasionally for reporting,
+        as the existing diagnostic does), N=~4,355 -- substantial extra
+        memory/compute over the MSE-only path."""
         accumulate = self.training
         node_features = self._node_features(node_features_raw, accumulate)
         edge_features = self._edge_features(x_k, accumulate)
@@ -201,4 +226,18 @@ class ForgeGNN(nn.Module):
         target_n = self.output_normalizer(target_delta, accumulate=accumulate)
         loss = ((pred_delta_n - target_n) ** 2).sum(dim=-1).mean()
         pred_delta_phys = self.output_normalizer.inverse(pred_delta_n)
+
+        if chamfer_weight > 0.0 or hausdorff_weight > 0.0:
+            true_pts = self.rest_pos.unsqueeze(0) + x_k + target_delta       # (B, N, 3)
+            pred_pts = self.rest_pos.unsqueeze(0) + x_k + pred_delta_phys    # (B, N, 3)
+            d = torch.cdist(true_pts, pred_pts)      # (B, N, N), gradient-tracking
+            d_t2p = d.min(dim=2).values               # (B, N)
+            d_p2t = d.min(dim=1).values                # (B, N)
+            if chamfer_weight > 0.0:
+                chamfer = (d_t2p ** 2).mean(dim=1) + (d_p2t ** 2).mean(dim=1)  # (B,)
+                loss = loss + chamfer_weight * chamfer.mean()
+            if hausdorff_weight > 0.0:
+                hausdorff = torch.maximum(d_t2p.max(dim=1).values, d_p2t.max(dim=1).values)  # (B,)
+                loss = loss + hausdorff_weight * hausdorff.mean()
+
         return loss, pred_delta_phys

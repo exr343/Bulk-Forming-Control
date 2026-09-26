@@ -42,7 +42,7 @@ def main():
     mesh, R, H, T_linear_fn = load_default_billet()
     plant = ForgingPlant(mesh, R, H, T_linear_fn)
     mesh_info = build_surface_mesh_info(
-        "applications/Agility_Forge/data/dataset/rollout_01/undeformed.vtu")
+        "applications/Agility_Forge/data/dataset_pretraining/rollout_01/undeformed.vtu")
 
     state = plant.reset()
     for step_idx, (d_j_frac, R_j_deg, u_j_frac) in enumerate(PLANNED_U_SEQ):

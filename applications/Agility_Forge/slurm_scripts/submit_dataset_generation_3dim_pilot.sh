@@ -19,8 +19,8 @@
 # parameter, alongside the existing d_j (axial position) and R_j (rotation).
 # Previously u_j was fixed at 2.5mm for the entire dataset -- the old
 # 2D-actuation dataset (338 rollouts, all at u_j=2.5mm) has been preserved
-# at data/dataset_2dim rather than overwritten; this job writes to the
-# (now-empty) default data/dataset path instead, starting the new dataset
+# at data/backup/dataset_2dim rather than overwritten; this job writes to the
+# (now-empty) default data/dataset_pretraining path instead, starting the new dataset
 # fresh from rollout_01.
 #
 # --min/max-compression-displacement 0.5/2.0mm: widened slightly beyond the

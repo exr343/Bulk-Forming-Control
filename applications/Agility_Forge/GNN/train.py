@@ -2,7 +2,7 @@
 
 Usage:
     python -m applications.Agility_Forge.GNN.train \\
-        --dataset-dir applications/Agility_Forge/data/dataset --epochs 100
+        --dataset-dir applications/Agility_Forge/data/dataset_pretraining --epochs 100
 
 Trains one-hit-ahead only (clean teacher-forced inputs, no noise injection,
 no multi-step unrolling -- see GNN/README.md's "Training regime" decision).
@@ -69,7 +69,7 @@ logger.setLevel(logging.INFO)
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument("--dataset-dir", default="applications/Agility_Forge/data/dataset")
+    parser.add_argument("--dataset-dir", default="applications/Agility_Forge/data/dataset_pretraining")
     parser.add_argument("--rollout-allowlist", default=None,
                          help="Path to a JSON file containing a list of rollout ids to restrict "
                               "training to (e.g. reproducing an exact past snapshot when the "
@@ -85,6 +85,15 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--wd", type=float, default=1e-4, help="AdamW weight decay.")
     parser.add_argument("--patience", type=int, default=20, help="Early-stop patience (epochs) on test loss.")
+    parser.add_argument("--chamfer-weight", type=float, default=0.0,
+                         help="Weight on a differentiable Chamfer distance term added to the training "
+                              "loss (0.0 = off, the long-standing default -- per-node MSE is normally "
+                              "strictly stronger supervision here since correspondence is known; see "
+                              "ForgeGNN.loss_and_predict's docstring). Untuned starting point if nonzero.")
+    parser.add_argument("--hausdorff-weight", type=float, default=0.0,
+                         help="Weight on a differentiable Hausdorff distance term added to the training "
+                              "loss (0.0 = off). Sparse gradient (only the worst-case node per example "
+                              "gets signal) -- see ForgeGNN.loss_and_predict's docstring.")
 
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
@@ -156,7 +165,8 @@ def _compute_target_std(loader) -> float:
     return var**0.5
 
 
-def _epoch_pass(model, loader, device, target_std, rest_pos, optimizer=None, track_geometry=True):
+def _epoch_pass(model, loader, device, target_std, rest_pos, optimizer=None, track_geometry=True,
+                 chamfer_weight=0.0, hausdorff_weight=0.0):
     """Returns (avg_loss, nrmse, chamfer_mm2, hausdorff_mm). `avg_loss` is the
     actual optimized objective (per-node MSE in normalized-target space,
     ForgeGNN.loss) -- used for backprop and for early-stopping/checkpoint
@@ -180,7 +190,9 @@ def _epoch_pass(model, loader, device, target_std, rest_pos, optimizer=None, tra
         x_k = batch["x_k"].to(device)
         target_delta = batch["target_delta"].to(device)
         with torch.set_grad_enabled(train_mode):
-            loss, pred_phys = model.loss_and_predict(node_features, x_k, target_delta)
+            loss, pred_phys = model.loss_and_predict(node_features, x_k, target_delta,
+                                                       chamfer_weight=chamfer_weight,
+                                                       hausdorff_weight=hausdorff_weight)
             if train_mode:
                 optimizer.zero_grad()
                 loss.backward()
@@ -433,9 +445,11 @@ def train(args):
     for epoch in range(1, args.epochs + 1):
         train_loss, train_nrmse, train_chamfer, train_hausdorff = _epoch_pass(
             model, train_loader, device, train_target_std, rest_pos_dev,
-            optimizer=optimizer, track_geometry=track_geometry)
+            optimizer=optimizer, track_geometry=track_geometry,
+            chamfer_weight=args.chamfer_weight, hausdorff_weight=args.hausdorff_weight)
         test_loss, test_nrmse, test_chamfer, test_hausdorff = _epoch_pass(
-            model, test_loader, device, test_target_std, rest_pos_dev, track_geometry=track_geometry)
+            model, test_loader, device, test_target_std, rest_pos_dev, track_geometry=track_geometry,
+            chamfer_weight=args.chamfer_weight, hausdorff_weight=args.hausdorff_weight)
         history["train_loss"].append(train_loss)
         history["test_loss"].append(test_loss)
         history["train_nrmse"].append(train_nrmse)

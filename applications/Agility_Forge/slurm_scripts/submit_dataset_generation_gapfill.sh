@@ -18,7 +18,7 @@
 # cancelled mid-run at 14/31 replacement rollouts complete. All incomplete
 # rollout dirs (the original 31 stragglers + the 17 never-started backfill
 # slots 415-431) were then moved out to data/backup/incomplete_rollouts/, so
-# data/dataset/ now holds 383 clean, complete rollouts with nothing for the
+# data/dataset_pretraining/ now holds 383 clean, complete rollouts with nothing for the
 # backfill script's own straggler-scan to find. This job doesn't re-scan --
 # it directly requests the fixed number of rollouts needed to restore the
 # original target: 400 - 383 = 17.
