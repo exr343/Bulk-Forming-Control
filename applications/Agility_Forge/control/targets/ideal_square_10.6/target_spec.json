@@ -1,0 +1,24 @@
+{
+  "square_side_mm": 10.6,
+  "taper_length_mm": 7.5,
+  "taper_flank_angle_deg": 19.37507502278272,
+  "billet_diameter_mm": 15.87500040244252,
+  "billet_length_mm": 101.52000427246094,
+  "round_section_mm": [
+    -5.0,
+    17.733333333333334
+  ],
+  "taper_mm": [
+    17.733333333333334,
+    25.233333333333334
+  ],
+  "square_section_mm": [
+    25.233333333333334,
+    153.15105180281827
+  ],
+  "square_section_length_mm": 127.91771846948494,
+  "total_length_mm": 158.15105180281827,
+  "free_end_displacement_mm": 56.631047530357336,
+  "billet_volume_mm3": 19866.577403059477,
+  "target_volume_mm3": 19833.813687020393
+}

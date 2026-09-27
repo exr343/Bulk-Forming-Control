@@ -17,6 +17,23 @@ assumed). `mpc.MPCController` implements single-shooting SQP planning
 
 ## Design decisions (settled)
 
+- **Strike-depth input: the relative stroke `u_j`, as JAX-FORGE defines it
+  (settled 2026-09-27; the absolute-gap alternative is a closed dead end).**
+  `u_j` is how far each die travels over the hit, starting from the bar's
+  outermost point in the die band on its own side, measured along the press
+  direction on the current deformed surface
+  (`lib/boundary_conditions.build_cylinder_press_bcs`). It is the input every
+  training set and every MPC run up to experiment 8 used. An absolute
+  half-gap input (`--control gap` in `GNN/data.py`, `control="gap"` in
+  `control/mpc.py`) was tried in experiments 9-11 and rejected: equal
+  accuracy on the held-out square run, but on real MPC trajectories it
+  over-predicted stretch about twice as much (0.44 vs 0.20 mm per hit) and
+  drifted 2-3x faster, and every gap-based MPC variant ended worse than the
+  open loop. See `progress/control_reports/2026-09-27_cost_e9_gap_control/`
+  and `2026-09-27_cost_e10_e11_gap_diagnosis/`. The gap code is left in
+  place (off by default) only so those results stay reproducible; don't
+  build on it.
+
 - **Shooting method: single-shooting, not multi-shooting.** The literal
   problem statement (`x_{k+1}=f(x_k,u_k)` as a constraint, cost over `x_k`)
   reads like multi-shooting notation — `x_k` as an explicit decision
@@ -63,7 +80,7 @@ assumed). `mpc.MPCController` implements single-shooting SQP planning
   `u_j_mm in [0.0, 2.0]` (`MPCController`'s `u_j_mm_min`/`u_j_mm_max`,
   default `mpc.U_J_MM_MIN`/`U_J_MM_MAX`) — **not** the training data's
   literal 0.5-2.0mm sampled range. An extended-horizon pilot
-  (`control/mpc_target_rollout_415_10hits/`) showed the 0.5mm floor gives
+  (`control/results/before_2026-09-26_fixes/rollout_415_10hits/`) showed the 0.5mm floor gives
   receding-horizon MPC no way to choose "no hit": once already near target,
   every remaining required hit is forced to apply real plastic deformation,
   which plateaued Chamfer and made Hausdorff creep upward hit-over-hit
@@ -101,7 +118,7 @@ just repeating the true trajectory, evaluated through the same surrogate.
 
 **Closed-loop** (`run_closed_loop.py`, `MPCController.run()`): re-plans from
 the plant's *true* post-hit state before every real hit (horizon shrinking
-5→4→3→2→1). Run against 5 independent held-out targets (`mpc_target_rollout_
+5→4→3→2→1). Run against 5 independent held-out targets (`results/before_2026-09-26_fixes/rollout_
 {415,416,417,418,419}/`, each definitionally never seen by
 `checkpoint_3dim.pt`'s training — completed by a later dataset-generation
 job after that checkpoint had already been trained):
@@ -130,7 +147,7 @@ general guarantee.
 
 ## Per-step output for animation
 
-Each `mpc_target_rollout_{id}/` folder holds `target.vtu` (the true target
+Each `results/before_2026-09-26_fixes/rollout_{id}/` folder holds `target.vtu` (the true target
 geometry) plus `step_00.vtu` (undeformed) through `step_05.vtu` (state after
 each real hit) as surface-mesh `.vtu` files, saved incrementally via
 `MPCController.run()`'s `step_callback` — so a crash/timeout partway through
@@ -138,14 +155,46 @@ a multi-hour closed-loop run still leaves usable partial output. Intended
 for stringing together into an animation of the controlled forging sequence
 against its target.
 
+## Folder layout and 2026-09-26 fixes
+
+Scripts live at the top of `control/`; every run's output lives in
+`results/<run>/` (moved there 2026-09-26 from top-level `mpc_*` folders).
+
+Two planner bugs were fixed on 2026-09-26. Results made before then should be
+read with them in mind:
+
+- **Stroke mismatch.** Once `U_J_MM_MIN` was lowered to 0.0, the MPC sent the
+  plant `u_mm = 2 * u_j_frac` but fed the GNN the same `u_j_frac`, which the
+  GNN reads on its 0.5-2.0mm training scale. Frac 0.5 meant 1.0mm to the plant
+  but 1.25mm to the GNN. Now every GNN call goes through `mpc.gnn_u_frac()`.
+  Affected: `results/before_2026-09-26_fixes/prism_target*`, `results/before_2026-09-26_fixes/rollout_415_chamfer_hausdorff`,
+  `results/before_2026-09-26_fixes/closed_loop_test_set`.
+- **SLSQP scaling.** The raw cost is ~1e6 (squared mm over ~4.4k nodes) with
+  gradients ~1e5, and R_j spans 0-360 against 0-1 for the other controls.
+  SLSQP returned its initial guess unchanged while reporting success. `plan()`
+  now optimizes controls rescaled to [0, 1] against a cost normalized by its
+  initial value; returned controls and `result.fun` are unchanged in units.
+  This probably explains earlier "do nothing" plans (e.g. the prism target's
+  near-zero strokes pinned at d_j = 0.78). Every run before the fix is affected.
+
+`MPCController` also takes `d_j_bounds` (e.g. a floor at the initial
+temperature profile's 800 C point, d_j = 0.1837).
+
+`eval_square_target.py` runs closed-loop MPC toward the square run's final
+geometry (`data/dataset_finetuning/square`, hit 48) with the finetuned GNN:
+horizon always 10, exactly 50 hits, stroke 0-2mm, d_j >= 0.1837. After every
+hit it checkpoints the plant state and rewrites `results.json` and the plots
+(error_vs_hit.png, controls_{station,angle,stroke}.png), so a resubmitted job
+resumes from the last completed hit. Output: `results/real_simulator/e0_original_cost/`.
+
 ## Open items
 
 - **Finetuned surrogate not yet used here.** `GNN/finetune_square/checkpoint_mp_5_finetuned_square.pt`
   (finetuned on scheduled square-rod rollouts with pretraining replay; see
   `GNN/README.md`) predicts a full 48-hit square-forming rollout far better
-  than `checkpoint_mp_5.pt` (final-hit Hausdorff 2.1mm vs. 17.5mm). The eval
-  scripts here still default to the un-finetuned checkpoints. A square-rod
-  MPC target also needs a planning horizon far beyond the 5-10 hits tested so far.
+  than `checkpoint_mp_5.pt` (final-hit Hausdorff 2.1mm vs. 17.5mm). Only
+  `eval_square_target.py` uses it; the other eval scripts still default to the
+  un-finetuned checkpoints.
 - **`U_J_MM_MAX = 2.0` is a surrogate-validity bound, not a die limit.** The
   square-rod rollouts show the 2mm per-hit stroke cap binding often (9-26 of
   44-48 hits per run), so those runs end short of their planned sizes.

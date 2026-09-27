@@ -1,0 +1,35 @@
+[
+  {
+    "name": "e12_csonly_min0.5_seed0",
+    "penalty": {
+      "lengthwise": 0.0,
+      "effort_s": 0.0
+    },
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 0,
+    "min_travel_mm": 0.5
+  },
+  {
+    "name": "e12_csonly_min0.5_seed1",
+    "penalty": {
+      "lengthwise": 0.0,
+      "effort_s": 0.0
+    },
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 1,
+    "min_travel_mm": 0.5
+  },
+  {
+    "name": "e12_csonly_min0.5_seed2",
+    "penalty": {
+      "lengthwise": 0.0,
+      "effort_s": 0.0
+    },
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 2,
+    "min_travel_mm": 0.5
+  }
+]

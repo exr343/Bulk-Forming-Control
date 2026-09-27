@@ -1,0 +1,212 @@
+[
+  {
+    "name": "e7_share25_effort0_seed0",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.25,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 0
+  },
+  {
+    "name": "e7_share25_effort0_seed1",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.25,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 1
+  },
+  {
+    "name": "e7_share25_effort0_seed2",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.25,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 2
+  },
+  {
+    "name": "e7_share25_effort0.3_seed0",
+    "penalty": {
+      "effort_s": 0.3
+    },
+    "cs_share": 0.25,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 0
+  },
+  {
+    "name": "e7_share25_effort0.3_seed1",
+    "penalty": {
+      "effort_s": 0.3
+    },
+    "cs_share": 0.25,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 1
+  },
+  {
+    "name": "e7_share25_effort0.3_seed2",
+    "penalty": {
+      "effort_s": 0.3
+    },
+    "cs_share": 0.25,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 2
+  },
+  {
+    "name": "e7_share50_effort0_seed0",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.5,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 0
+  },
+  {
+    "name": "e7_share50_effort0_seed1",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.5,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 1
+  },
+  {
+    "name": "e7_share50_effort0_seed2",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.5,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 2
+  },
+  {
+    "name": "e7_share50_effort0.3_seed0",
+    "penalty": {
+      "effort_s": 0.3
+    },
+    "cs_share": 0.5,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 0
+  },
+  {
+    "name": "e7_share50_effort0.3_seed1",
+    "penalty": {
+      "effort_s": 0.3
+    },
+    "cs_share": 0.5,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 1
+  },
+  {
+    "name": "e7_share50_effort0.3_seed2",
+    "penalty": {
+      "effort_s": 0.3
+    },
+    "cs_share": 0.5,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 2
+  },
+  {
+    "name": "e7_share75_effort0_seed0",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.75,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 0
+  },
+  {
+    "name": "e7_share75_effort0_seed1",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.75,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 1
+  },
+  {
+    "name": "e7_share75_effort0_seed2",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.75,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 2
+  },
+  {
+    "name": "e7_share75_effort0.3_seed0",
+    "penalty": {
+      "effort_s": 0.3
+    },
+    "cs_share": 0.75,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 0
+  },
+  {
+    "name": "e7_share75_effort0.3_seed1",
+    "penalty": {
+      "effort_s": 0.3
+    },
+    "cs_share": 0.75,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 1
+  },
+  {
+    "name": "e7_share75_effort0.3_seed2",
+    "penalty": {
+      "effort_s": 0.3
+    },
+    "cs_share": 0.75,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 2
+  },
+  {
+    "name": "e7_w30_effort0.3_seed0",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.3
+    },
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 0
+  },
+  {
+    "name": "e7_w30_effort0.3_seed1",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.3
+    },
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 1
+  },
+  {
+    "name": "e7_w30_effort0.3_seed2",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.3
+    },
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 2
+  }
+]

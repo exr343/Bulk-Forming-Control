@@ -1,0 +1,238 @@
+{
+  "open_loop_hit48": {
+    "chamfer_mm2": 39.75278091430664,
+    "hausdorff_mm": 22.74180030822754
+  },
+  "groups": {
+    "Stroke GNN, stroke variable (exp. 7)": {
+      "runs": [
+        "e7_share25_effort0_seed0",
+        "e7_share25_effort0_seed1",
+        "e7_share25_effort0_seed2"
+      ],
+      "final_chamfer_mm2": [
+        22.52286720275879,
+        30.597396850585938,
+        32.4747200012207
+      ],
+      "final_hausdorff_mm": [
+        17.15684700012207,
+        19.935148239135742,
+        20.244935989379883
+      ],
+      "cross_section_err_mm": [
+        3.460745334625244,
+        3.445366621017456,
+        3.7906079292297363
+      ],
+      "tip_axial_mm": [
+        40.17808151245117,
+        37.66986083984375,
+        36.9897575378418
+      ],
+      "mean_plan_time_s": [
+        3.19069992877543,
+        2.870264786183834,
+        2.531823107972741
+      ],
+      "n_active_hits": [
+        37,
+        37,
+        31
+      ],
+      "n_skipped": [
+        0,
+        0,
+        0
+      ],
+      "share_plans_at_iteration_limit": 0.0,
+      "share_hits_within_10deg_of_flats": 0.9266666666666666,
+      "mean_travel_mm": 1.2394780354297377,
+      "share_hits_travel_ge_1.9mm": 0.54
+    },
+    "Gap GNN, gap variable, misses allowed (exp. 10)": {
+      "runs": [
+        "e10_gap_miss_seed0",
+        "e10_gap_miss_seed1",
+        "e10_gap_miss_seed2"
+      ],
+      "final_chamfer_mm2": [
+        60.96086883544922,
+        40.6122932434082,
+        54.26581573486328
+      ],
+      "final_hausdorff_mm": [
+        26.832542419433594,
+        22.784143447875977,
+        25.418603897094727
+      ],
+      "cross_section_err_mm": [
+        4.166996955871582,
+        3.4909729957580566,
+        4.877192974090576
+      ],
+      "tip_axial_mm": [
+        31.663087844848633,
+        34.5351448059082,
+        32.261260986328125
+      ],
+      "mean_plan_time_s": [
+        52.12455409064889,
+        32.824888985306025,
+        43.67853830039501
+      ],
+      "n_active_hits": [
+        40,
+        44,
+        50
+      ],
+      "n_skipped": [
+        10,
+        6,
+        0
+      ],
+      "share_plans_at_iteration_limit": 0.4,
+      "share_hits_within_10deg_of_flats": 0.58,
+      "mean_travel_mm": 1.4570623210370623,
+      "share_hits_travel_ge_1.9mm": 0.5133333333333333
+    },
+    "Gap GNN, gap variable, min travel 0.5 mm (exp. 10)": {
+      "runs": [
+        "e10_gap_min0.5_seed0",
+        "e10_gap_min0.5_seed1",
+        "e10_gap_min0.5_seed2"
+      ],
+      "final_chamfer_mm2": [
+        48.89084243774414,
+        51.897613525390625,
+        42.26213073730469
+      ],
+      "final_hausdorff_mm": [
+        24.242267608642578,
+        24.89266014099121,
+        22.75678062438965
+      ],
+      "cross_section_err_mm": [
+        5.00447416305542,
+        5.218919277191162,
+        4.763282299041748
+      ],
+      "tip_axial_mm": [
+        33.19799041748047,
+        32.54216003417969,
+        35.59626388549805
+      ],
+      "mean_plan_time_s": [
+        49.70036112189293,
+        44.209989931359885,
+        62.80747261971235
+      ],
+      "n_active_hits": [
+        50,
+        50,
+        50
+      ],
+      "n_skipped": [
+        0,
+        0,
+        0
+      ],
+      "share_plans_at_iteration_limit": 0.5733333333333334,
+      "share_hits_within_10deg_of_flats": 0.58,
+      "mean_travel_mm": 1.562945561400689,
+      "share_hits_travel_ge_1.9mm": 0.5333333333333333
+    },
+    "Gap GNN, travel variable 0.5-2 mm (exp. 11)": {
+      "runs": [
+        "e11_gapgnn_travelvar_seed0",
+        "e11_gapgnn_travelvar_seed1",
+        "e11_gapgnn_travelvar_seed2"
+      ],
+      "final_chamfer_mm2": [
+        31.541948318481445,
+        66.90107727050781,
+        58.93516159057617
+      ],
+      "final_hausdorff_mm": [
+        20.528657913208008,
+        27.79263687133789,
+        26.41913604736328
+      ],
+      "cross_section_err_mm": [
+        3.5405752658843994,
+        5.048709869384766,
+        3.4133660793304443
+      ],
+      "tip_axial_mm": [
+        36.89745330810547,
+        30.411762237548828,
+        30.83746910095215
+      ],
+      "mean_plan_time_s": [
+        6.154305885434151,
+        5.010383972376585,
+        4.933062442094087
+      ],
+      "n_active_hits": [
+        50,
+        50,
+        50
+      ],
+      "n_skipped": [
+        0,
+        0,
+        0
+      ],
+      "share_plans_at_iteration_limit": 0.0,
+      "share_hits_within_10deg_of_flats": 0.6333333333333333,
+      "mean_travel_mm": 1.5016103411984796,
+      "share_hits_travel_ge_1.9mm": 0.44
+    },
+    "Stroke GNN, stroke variable 0.5-2 mm (exp. 11)": {
+      "runs": [
+        "e11_strokegnn_min0.5_seed0",
+        "e11_strokegnn_min0.5_seed1",
+        "e11_strokegnn_min0.5_seed2"
+      ],
+      "final_chamfer_mm2": [
+        25.62070083618164,
+        20.96263885498047,
+        19.285602569580078
+      ],
+      "final_hausdorff_mm": [
+        18.132057189941406,
+        16.333141326904297,
+        16.141162872314453
+      ],
+      "cross_section_err_mm": [
+        4.189910888671875,
+        4.056517124176025,
+        3.265650510787964
+      ],
+      "tip_axial_mm": [
+        39.5125617980957,
+        41.24073028564453,
+        41.37228775024414
+      ],
+      "mean_plan_time_s": [
+        2.7416028659045697,
+        2.4724676910042764,
+        2.9794312205910685
+      ],
+      "n_active_hits": [
+        50,
+        50,
+        50
+      ],
+      "n_skipped": [
+        0,
+        0,
+        0
+      ],
+      "share_plans_at_iteration_limit": 0.013333333333333334,
+      "share_hits_within_10deg_of_flats": 0.72,
+      "mean_travel_mm": 1.4066292945888812,
+      "share_hits_travel_ge_1.9mm": 0.5533333333333333
+    }
+  }
+}

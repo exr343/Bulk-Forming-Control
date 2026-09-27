@@ -220,6 +220,23 @@ triangles, 13,059 unique undirected mesh edges (26,118 directed).
 Settled through an explicit interview with the user; nothing below is a silent
 default.
 
+- **Strike-depth input: the relative stroke `u_j`, as JAX-FORGE defines it
+  (settled 2026-09-27; the absolute-gap alternative is a closed dead end).**
+  `u_j` is how far each die travels over the hit, starting from the bar's
+  outermost point in the die band on its own side, measured along the press
+  direction on the current deformed surface
+  (`lib/boundary_conditions.build_cylinder_press_bcs`). It is the input every
+  training set and every MPC run up to experiment 8 used. An absolute
+  half-gap input (`--control gap` in `GNN/data.py`, `control="gap"` in
+  `control/mpc.py`) was tried in experiments 9-11 and rejected: equal
+  accuracy on the held-out square run, but on real MPC trajectories it
+  over-predicted stretch about twice as much (0.44 vs 0.20 mm per hit) and
+  drifted 2-3x faster, and every gap-based MPC variant ended worse than the
+  open loop. See `progress/control_reports/2026-09-27_cost_e9_gap_control/`
+  and `2026-09-27_cost_e10_e11_gap_diagnosis/`. The gap code is left in
+  place (off by default) only so those results stay reproducible; don't
+  build on it.
+
 - **Step granularity**: one GNN forward pass predicts one full hit-to-hit
   state transition, not a small solver sub-step the way the reference
   MeshGraphNets paper's rollouts are usually framed. `generate_dataset.py`

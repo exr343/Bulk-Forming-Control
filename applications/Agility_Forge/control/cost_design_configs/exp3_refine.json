@@ -1,0 +1,58 @@
+[
+  {
+    "name": "e3_trans_30_effort_0.03",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.03
+    }
+  },
+  {
+    "name": "e3_trans_30_effort_0.1",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.1
+    }
+  },
+  {
+    "name": "e3_trans_30_effort_0.3",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.3
+    }
+  },
+  {
+    "name": "e3_trans_50_effort_0.03",
+    "penalty": {
+      "transverse": 50,
+      "effort_s": 0.03
+    }
+  },
+  {
+    "name": "e3_trans_50_effort_0.1",
+    "penalty": {
+      "transverse": 50,
+      "effort_s": 0.1
+    }
+  },
+  {
+    "name": "e3_trans_50_effort_0.3",
+    "penalty": {
+      "transverse": 50,
+      "effort_s": 0.3
+    }
+  },
+  {
+    "name": "e3_trans_100_effort_0.03",
+    "penalty": {
+      "transverse": 100,
+      "effort_s": 0.03
+    }
+  },
+  {
+    "name": "e3_trans_100_effort_0.3",
+    "penalty": {
+      "transverse": 100,
+      "effort_s": 0.3
+    }
+  }
+]

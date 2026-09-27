@@ -1,0 +1,137 @@
+[
+  {
+    "name": "e4_t30_e0.1_seed0",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.1
+    },
+    "init_noise": 0.02,
+    "seed": 0
+  },
+  {
+    "name": "e4_t30_e0.1_seed1",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.1
+    },
+    "init_noise": 0.02,
+    "seed": 1
+  },
+  {
+    "name": "e4_t30_e0.1_seed2",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.1
+    },
+    "init_noise": 0.02,
+    "seed": 2
+  },
+  {
+    "name": "e4_t30_e0.1_seed3",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.1
+    },
+    "init_noise": 0.02,
+    "seed": 3
+  },
+  {
+    "name": "e4_t30_e0.1_seed4",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.1
+    },
+    "init_noise": 0.02,
+    "seed": 4
+  },
+  {
+    "name": "e4_t30_e0.3_seed0",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.3
+    },
+    "init_noise": 0.02,
+    "seed": 0
+  },
+  {
+    "name": "e4_t30_e0.3_seed1",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.3
+    },
+    "init_noise": 0.02,
+    "seed": 1
+  },
+  {
+    "name": "e4_t30_e0.3_seed2",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.3
+    },
+    "init_noise": 0.02,
+    "seed": 2
+  },
+  {
+    "name": "e4_t30_e0.3_seed3",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.3
+    },
+    "init_noise": 0.02,
+    "seed": 3
+  },
+  {
+    "name": "e4_t30_e0.3_seed4",
+    "penalty": {
+      "transverse": 30,
+      "effort_s": 0.3
+    },
+    "init_noise": 0.02,
+    "seed": 4
+  },
+  {
+    "name": "e4_t100_e0.1_seed0",
+    "penalty": {
+      "transverse": 100,
+      "effort_s": 0.1
+    },
+    "init_noise": 0.02,
+    "seed": 0
+  },
+  {
+    "name": "e4_t100_e0.1_seed1",
+    "penalty": {
+      "transverse": 100,
+      "effort_s": 0.1
+    },
+    "init_noise": 0.02,
+    "seed": 1
+  },
+  {
+    "name": "e4_t100_e0.1_seed2",
+    "penalty": {
+      "transverse": 100,
+      "effort_s": 0.1
+    },
+    "init_noise": 0.02,
+    "seed": 2
+  },
+  {
+    "name": "e4_t100_e0.1_seed3",
+    "penalty": {
+      "transverse": 100,
+      "effort_s": 0.1
+    },
+    "init_noise": 0.02,
+    "seed": 3
+  },
+  {
+    "name": "e4_t100_e0.1_seed4",
+    "penalty": {
+      "transverse": 100,
+      "effort_s": 0.1
+    },
+    "init_noise": 0.02,
+    "seed": 4
+  }
+]

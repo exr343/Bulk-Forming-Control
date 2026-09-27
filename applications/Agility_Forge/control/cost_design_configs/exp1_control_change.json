@@ -1,0 +1,48 @@
+[
+  {
+    "name": "e1_baseline",
+    "penalty": {}
+  },
+  {
+    "name": "e1_delta_all_0.01",
+    "penalty": {
+      "delta_d": 0.01,
+      "delta_R": 0.01,
+      "delta_s": 0.01
+    }
+  },
+  {
+    "name": "e1_delta_all_0.1",
+    "penalty": {
+      "delta_d": 0.1,
+      "delta_R": 0.1,
+      "delta_s": 0.1
+    }
+  },
+  {
+    "name": "e1_delta_all_1",
+    "penalty": {
+      "delta_d": 1.0,
+      "delta_R": 1.0,
+      "delta_s": 1.0
+    }
+  },
+  {
+    "name": "e1_delta_d_0.01",
+    "penalty": {
+      "delta_d": 0.01
+    }
+  },
+  {
+    "name": "e1_delta_d_0.1",
+    "penalty": {
+      "delta_d": 0.1
+    }
+  },
+  {
+    "name": "e1_delta_d_1",
+    "penalty": {
+      "delta_d": 1.0
+    }
+  }
+]

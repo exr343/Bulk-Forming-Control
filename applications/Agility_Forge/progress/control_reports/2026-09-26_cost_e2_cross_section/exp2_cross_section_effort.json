@@ -1,0 +1,39 @@
+[
+  {
+    "name": "e2_trans_30",
+    "penalty": {
+      "transverse": 30
+    }
+  },
+  {
+    "name": "e2_trans_100",
+    "penalty": {
+      "transverse": 100
+    }
+  },
+  {
+    "name": "e2_trans_300",
+    "penalty": {
+      "transverse": 300
+    }
+  },
+  {
+    "name": "e2_effort_0.1",
+    "penalty": {
+      "effort_s": 0.1
+    }
+  },
+  {
+    "name": "e2_effort_1",
+    "penalty": {
+      "effort_s": 1.0
+    }
+  },
+  {
+    "name": "e2_trans_100_effort_0.1",
+    "penalty": {
+      "transverse": 100,
+      "effort_s": 0.1
+    }
+  }
+]

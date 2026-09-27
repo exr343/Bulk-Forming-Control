@@ -1,0 +1,74 @@
+[
+  {
+    "name": "e10_gap_miss_seed0",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.25,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 0,
+    "checkpoint_path": "applications/Agility_Forge/GNN/gap_control/gap_nochange10/finetune/checkpoint.pt",
+    "min_travel_mm": 0.0
+  },
+  {
+    "name": "e10_gap_miss_seed1",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.25,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 1,
+    "checkpoint_path": "applications/Agility_Forge/GNN/gap_control/gap_nochange10/finetune/checkpoint.pt",
+    "min_travel_mm": 0.0
+  },
+  {
+    "name": "e10_gap_miss_seed2",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.25,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 2,
+    "checkpoint_path": "applications/Agility_Forge/GNN/gap_control/gap_nochange10/finetune/checkpoint.pt",
+    "min_travel_mm": 0.0
+  },
+  {
+    "name": "e10_gap_min0.5_seed0",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.25,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 0,
+    "checkpoint_path": "applications/Agility_Forge/GNN/gap_control/gap_nochange10/finetune/checkpoint.pt",
+    "min_travel_mm": 0.5
+  },
+  {
+    "name": "e10_gap_min0.5_seed1",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.25,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 1,
+    "checkpoint_path": "applications/Agility_Forge/GNN/gap_control/gap_nochange10/finetune/checkpoint.pt",
+    "min_travel_mm": 0.5
+  },
+  {
+    "name": "e10_gap_min0.5_seed2",
+    "penalty": {
+      "effort_s": 0.0
+    },
+    "cs_share": 0.25,
+    "target_vtu": "applications/Agility_Forge/control/targets/ideal_square_10.6/target_on_billet.vtu",
+    "init_noise": 0.02,
+    "seed": 2,
+    "checkpoint_path": "applications/Agility_Forge/GNN/gap_control/gap_nochange10/finetune/checkpoint.pt",
+    "min_travel_mm": 0.5
+  }
+]
