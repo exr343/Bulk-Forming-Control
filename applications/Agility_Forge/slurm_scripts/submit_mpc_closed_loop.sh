@@ -23,7 +23,7 @@
 set -euo pipefail
 
 TARGET_ROLLOUT="$1"
-OUT_DIR="applications/Agility_Forge/control/mpc_target_rollout_${TARGET_ROLLOUT}"
+OUT_DIR="applications/Agility_Forge/control/results/before_2026-09-26_fixes/rollout_${TARGET_ROLLOUT}"
 
 cd /home/exr343/CIRP_2027
 

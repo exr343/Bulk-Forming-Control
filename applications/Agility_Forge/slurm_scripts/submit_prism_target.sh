@@ -46,6 +46,6 @@ python -m applications.Agility_Forge.control.eval_prism_target \
     --n-hits 8 \
     --apothem-mm 6.4375 \
     --u-j-mm-min 0.0 \
-    --out-dir applications/Agility_Forge/control/mpc_prism_target
+    --out-dir applications/Agility_Forge/control/results/before_2026-09-26_fixes/prism_target
 
 echo "Job finished: $(date)"

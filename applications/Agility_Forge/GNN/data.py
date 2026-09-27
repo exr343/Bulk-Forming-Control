@@ -11,6 +11,7 @@ Node/edge features here are RAW (unnormalized); the three online normalizers
 reference's own split between data loading and normalization.
 """
 
+import dataclasses
 import json
 import os
 from dataclasses import dataclass
@@ -149,6 +150,67 @@ class HitExample:
     R_j_deg: float
     u_j_frac: float
     u_j_mm: float
+    # Absolute gap control (see band_half_thickness); filled by
+    # ForgeGNNDataset(..., control="gap"), NaN until then.
+    half_gap_mm: float = float("nan")
+
+
+# Absolute gap control (settled by interview, 2026-09-27). The relative
+# stroke u_j (each die starts at the band's outermost point on its side and
+# travels u_j inward) is replaced by the half-gap the dies close to: half
+# the final die separation, centred on the bar's current centre in the band,
+#     half_gap = band_half_thickness(x_k) - u_j.
+# That is exactly what the plant did for every recorded hit, so the old data
+# relabels without re-simulation. A half-gap at or above the band
+# half-thickness means the dies never touch: no change (see
+# sample_no_change). half_gap enters the control vector as a raw [0,1]
+# fraction over [GAP_MIN_MM, GAP_MAX_MM], like d_j_frac/u_j_frac; the range
+# covers the data (4.25-8.75 mm) and no-contact gaps up to 2 mm above the
+# billet's 7.94 mm radius.
+GAP_MIN_MM, GAP_MAX_MM = 4.0, 10.0
+CONTROLS = ("stroke", "gap")
+
+
+def gap_frac(half_gap_mm):
+    return (half_gap_mm - GAP_MIN_MM) / (GAP_MAX_MM - GAP_MIN_MM)
+
+
+def band_half_thickness(mesh_info: SurfaceMeshInfo, x_k: torch.Tensor, d_j_mm, x_max_band_mm, R_j_deg):
+    """Half the distance, along the press direction, between the two
+    outermost lateral-surface nodes in the band -- the same candidate set
+    (|r_ref - R| <= 0.1 R, x_ref in the band) and rotated frame
+    lib/boundary_conditions.build_cylinder_press_bcs uses to place the
+    platens. Differentiable in x_k and R_j_deg (for control/mpc.py)."""
+    rest = mesh_info.rest_pos.to(x_k.device)
+    r_ref = torch.hypot(rest[:, 1], rest[:, 2])
+    R = r_ref.max()
+    d = float(torch.as_tensor(d_j_mm).detach()); x_hi = float(torch.as_tensor(x_max_band_mm).detach())
+    cand = ((r_ref - R).abs() <= 0.1 * R) & (rest[:, 0] >= d) & (rest[:, 0] <= x_hi)
+    a = torch.deg2rad(torch.as_tensor(R_j_deg, dtype=torch.float32, device=x_k.device))
+    p = rest[cand] + x_k[cand]
+    y = torch.cos(a) * p[:, 1] - torch.sin(a) * p[:, 2]  # scipy from_euler("x", R) frame
+    return 0.5 * (y.max() - y.min())
+
+
+def control_value(ex: "HitExample", control: str) -> float:
+    """The 4th control entry for this example: u_j_frac or gap_frac."""
+    return gap_frac(ex.half_gap_mm) if control == "gap" else ex.u_j_frac
+
+
+def sample_no_change(examples, n, rng, max_extra_mm=2.0):
+    """n synthetic no-contact hits: a real example's pre-hit state and
+    station/angle, a half-gap 0-max_extra_mm above the band half-thickness
+    (so the dies never touch), and the pre-hit state itself as the label
+    (x_next_vtu = x_k_vtu -> zero target delta). `examples` must already
+    carry half_gap_mm (built through a control="gap" ForgeGNNDataset)."""
+    idx = rng.choice(len(examples), n, replace=len(examples) < n)
+    out = []
+    for i in idx:
+        ex = examples[i]
+        ht = ex.half_gap_mm + ex.u_j_mm
+        out.append(dataclasses.replace(ex, x_next_vtu=ex.x_k_vtu, u_j_mm=0.0, u_j_frac=float("nan"),
+                                       half_gap_mm=ht + float(rng.uniform(0.0, max_extra_mm))))
+    return out
 
 
 def _group_complete_rollouts(records, n_hits):
@@ -269,11 +331,19 @@ class ForgeGNNDataset(torch.utils.data.Dataset):
     reference's own `_build_graph`, which builds edges from raw inputs, not
     a data-loader precomputation)."""
 
-    def __init__(self, dataset_dir: str, examples, mesh_info: SurfaceMeshInfo):
+    def __init__(self, dataset_dir: str, examples, mesh_info: SurfaceMeshInfo, control: str = "stroke"):
+        assert control in CONTROLS, control
         self.dataset_dir = dataset_dir
-        self.examples = examples
         self.mesh_info = mesh_info
+        self.control = control
         self._cache = {}
+        if control == "gap":
+            examples = [ex if ex.half_gap_mm == ex.half_gap_mm else dataclasses.replace(
+                ex, half_gap_mm=float(band_half_thickness(
+                    mesh_info, self._load_surface_displacement(ex.x_k_vtu), ex.d_j_mm, ex.x_max_band_mm,
+                    ex.R_j_deg)) - ex.u_j_mm)
+                for ex in examples]
+        self.examples = examples
 
     def __len__(self):
         return len(self.examples)
@@ -295,7 +365,8 @@ class ForgeGNNDataset(torch.utils.data.Dataset):
         # Column order fixed by GNN/README.md's per-node feature table:
         # [is_bottom_face, is_pin_node, is_lateral_wall, dist_to_band, x_k(3), control(4)]
         node_features = build_node_features(
-            self.mesh_info, x_k, ex.d_j_frac, ex.d_j_mm, ex.x_max_band_mm, ex.R_j_deg, ex.u_j_frac,
+            self.mesh_info, x_k, ex.d_j_frac, ex.d_j_mm, ex.x_max_band_mm, ex.R_j_deg,
+            control_value(ex, self.control),
         )
 
         return {

@@ -3,9 +3,9 @@ the training data's fixed 5-hit schedule let receding-horizon MPC converge
 closer to a fixed target, or does pushing the GNN surrogate past the
 deformation states it was ever trained on make things worse past hit 5?
 
-Single rollout (default: mpc_target_rollout_415's own true hit-5 final
+Single rollout (default: results/before_2026-09-26_fixes/rollout_415's own true hit-5 final
 geometry -- the same target already used for
-control/mpc_target_rollout_415/'s earlier 5-hit M=15 validation), but run
+control/results/before_2026-09-26_fixes/rollout_415/'s earlier 5-hit M=15 validation), but run
 for up to --n-hits (default 10) real hits instead of 5. The target stays
 FIXED at the true hit-5 geometry throughout the whole run -- there is no
 real ground truth beyond hit 5 for this rollout (it was only ever forged
@@ -25,7 +25,7 @@ Chamfer/Hausdorff-vs-hit plot and per-step surface .vtu files for animation
 Usage:
     python -m applications.Agility_Forge.control.eval_extended_horizon \\
         --target-rollout 415 --n-hits 10 \\
-        --out-dir applications/Agility_Forge/control/mpc_target_rollout_415_10hits
+        --out-dir applications/Agility_Forge/control/results/before_2026-09-26_fixes/rollout_415_10hits
 """
 
 import argparse

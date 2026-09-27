@@ -22,7 +22,7 @@ trajectory" baseline is available here, unlike eval_closed_loop_test_set.py).
 
 Usage:
     python -m applications.Agility_Forge.control.eval_prism_target \\
-        --n-hits 8 --apothem-mm 6.4375 --out-dir applications/Agility_Forge/control/mpc_prism_target
+        --n-hits 8 --apothem-mm 6.4375 --out-dir applications/Agility_Forge/control/results/before_2026-09-26_fixes/prism_target
 """
 
 import argparse

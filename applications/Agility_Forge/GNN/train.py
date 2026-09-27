@@ -43,9 +43,12 @@ import torch
 from torch.utils.data import DataLoader
 
 from applications.Agility_Forge.GNN.data import (
+    CONTROLS,
     build_node_features,
     build_surface_mesh_info,
+    control_value,
     load_examples,
+    sample_no_change,
     save_surface_vtu,
     split_examples_by_rollout,
     ForgeGNNDataset,
@@ -95,6 +98,11 @@ def parse_args():
                               "loss (0.0 = off). Sparse gradient (only the worst-case node per example "
                               "gets signal) -- see ForgeGNN.loss_and_predict's docstring.")
 
+    parser.add_argument("--control", choices=CONTROLS, default="stroke",
+                        help="4th control input: relative stroke u_j, or the absolute half-gap (data.py).")
+    parser.add_argument("--no-change-frac", type=float, default=0.0,
+                        help="Fraction of each training epoch made of synthetic no-contact hits "
+                             "(data.sample_no_change; --control gap only).")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--checkpoint-path", default="applications/Agility_Forge/GNN/checkpoint.pt")
@@ -230,7 +238,7 @@ def _epoch_pass(model, loader, device, target_std, rest_pos, optimizer=None, tra
     return avg_loss, nrmse, avg_chamfer, avg_hausdorff
 
 
-def _rollout_eval(model, mesh_info, test_examples, dataset_dir, device, target_std):
+def _rollout_eval(model, mesh_info, test_examples, dataset_dir, device, target_std, control="stroke"):
     """Autoregressive rollout on one held-out rollout: hit 1 is predicted
     from the true x_0 (zero displacement); each subsequent hit is predicted
     from the model's OWN previous prediction, not the true x_k -- this is
@@ -261,7 +269,8 @@ def _rollout_eval(model, mesh_info, test_examples, dataset_dir, device, target_s
             true_next = ForgeGNNDataset(dataset_dir, [ex], mesh_info)._load_surface_displacement(ex.x_next_vtu).to(device)
 
             node_features_pred = build_node_features(
-                mesh_info, x_k_pred[0], ex.d_j_frac, ex.d_j_mm, ex.x_max_band_mm, ex.R_j_deg, ex.u_j_frac,
+                mesh_info, x_k_pred[0], ex.d_j_frac, ex.d_j_mm, ex.x_max_band_mm, ex.R_j_deg,
+                control_value(ex, control),
             ).unsqueeze(0).to(device)
             delta_pred = model.predict_delta(node_features_pred, x_k_pred, accumulate=False)
             x_next_pred = x_k_pred + delta_pred
@@ -278,7 +287,7 @@ def _rollout_eval(model, mesh_info, test_examples, dataset_dir, device, target_s
             per_hit_inputs.append({
                 "d_j_frac": ex.d_j_frac, "d_j_mm": ex.d_j_mm,
                 "R_j_deg": ex.R_j_deg,
-                "u_j_frac": ex.u_j_frac, "u_j_mm": ex.u_j_mm,
+                "u_j_frac": ex.u_j_frac, "u_j_mm": ex.u_j_mm, "half_gap_mm": ex.half_gap_mm,
             })
             eval_records.append((ex.hit, true_next.cpu().numpy(), x_next_pred[0].cpu().numpy()))
 
@@ -297,7 +306,7 @@ def _dump_eval_table(rollout_id, per_hit_rmse_mm, per_hit_nrmse, per_hit_chamfer
     import csv
     out_path = os.path.join(out_dir, "eval", f"rollout_{rollout_id:02d}", "eval_table.csv")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    fieldnames = ["rollout", "hit", "d_j_frac", "d_j_mm", "R_j_deg", "u_j_frac", "u_j_mm",
+    fieldnames = ["rollout", "hit", "d_j_frac", "d_j_mm", "R_j_deg", "u_j_frac", "u_j_mm", "half_gap_mm",
                   "rmse_mm", "nrmse", "chamfer_mm2", "hausdorff_mm"]
     with open(out_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -405,9 +414,17 @@ def train(args):
     logger.info(f"Surface mesh: {mesh_info.rest_pos.shape[0]} nodes, "
                 f"{mesh_info.senders.shape[0]} directed edges (from {reference_vtu})")
 
-    train_dataset = ForgeGNNDataset(args.dataset_dir, train_ex, mesh_info)
-    test_dataset = ForgeGNNDataset(args.dataset_dir, test_ex, mesh_info)
+    train_dataset = ForgeGNNDataset(args.dataset_dir, train_ex, mesh_info, control=args.control)
+    test_dataset = ForgeGNNDataset(args.dataset_dir, test_ex, mesh_info, control=args.control)
+    train_ex, test_ex = train_dataset.examples, test_dataset.examples  # with half_gap_mm in gap mode
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    # Synthetic no-contact hits, redrawn every epoch, making up
+    # --no-change-frac of the epoch (the real hits stay the other 1 - frac).
+    assert args.no_change_frac == 0.0 or args.control == "gap", "--no-change-frac needs --control gap"
+    n_no_change = int(round(args.no_change_frac / (1.0 - args.no_change_frac) * len(train_ex)))
+    no_change_rng = np.random.default_rng(args.seed)
+    if n_no_change:
+        logger.info(f"No-change hits: {n_no_change} per epoch ({args.no_change_frac:.0%})")
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     model = ForgeGNN(
@@ -443,6 +460,8 @@ def train(args):
 
     t0 = time.time()
     for epoch in range(1, args.epochs + 1):
+        if n_no_change:
+            train_dataset.examples = train_ex + sample_no_change(train_ex, n_no_change, no_change_rng)
         train_loss, train_nrmse, train_chamfer, train_hausdorff = _epoch_pass(
             model, train_loader, device, train_target_std, rest_pos_dev,
             optimizer=optimizer, track_geometry=track_geometry,
@@ -493,7 +512,7 @@ def train(args):
 
     (rollout_id, per_hit_rmse_mm, per_hit_nrmse, per_hit_chamfer_mm2, per_hit_hausdorff_mm,
      per_hit_inputs, eval_records) = _rollout_eval(
-        model, mesh_info, test_ex, args.dataset_dir, device, test_target_std)
+        model, mesh_info, test_ex, args.dataset_dir, device, test_target_std, control=args.control)
     logger.info(f"Autoregressive rollout eval (rollout {rollout_id}), per-hit RMSE (mm) / NRMSE / "
                 f"Chamfer (mm^2) / Hausdorff (mm): "
                 + ", ".join(f"hit{h}={r:.4f}mm/{n:.3f}/{c:.4f}/{ha:.4f}"

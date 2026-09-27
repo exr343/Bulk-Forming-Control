@@ -69,8 +69,8 @@ def main():
         cells=[("triangle", mesh_info.surf_faces_local)],
         point_data={"Displacement": onp.array(actual_final)},
     )
-    out_mesh.write("applications/Agility_Forge/control/open_loop_validation_result.vtu")
-    print("Saved: applications/Agility_Forge/control/open_loop_validation_result.vtu")
+    out_mesh.write("applications/Agility_Forge/control/results/before_2026-09-26_fixes/open_loop_validation/result.vtu")
+    print("Saved: applications/Agility_Forge/control/results/before_2026-09-26_fixes/open_loop_validation/result.vtu")
 
 
 if __name__ == "__main__":

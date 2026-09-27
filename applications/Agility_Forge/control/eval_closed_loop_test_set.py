@@ -43,7 +43,7 @@ that rollout's true controls through the real plant).
 Usage (single job, run on one H100 -- see
 slurm_scripts/submit_closed_loop_test_set_eval.sh):
     python -m applications.Agility_Forge.control.eval_closed_loop_test_set \\
-        --out-dir applications/Agility_Forge/control/eval_closed_loop_test_set
+        --out-dir applications/Agility_Forge/control/results/before_2026-09-26_fixes/closed_loop_test_set
 """
 
 import argparse

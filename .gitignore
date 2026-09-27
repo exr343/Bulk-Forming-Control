@@ -34,7 +34,8 @@ applications/Agility_Forge/koopman/runs/
 # summary .json files under mp_sweep/ are kept tracked (they define/record
 # the message-passing-depth comparison itself, not bulky regenerable output).
 applications/Agility_Forge/GNN/runs_2dim/
-applications/Agility_Forge/GNN/runs_3dim/
+applications/Agility_Forge/GNN/runs_3dim/*
+!applications/Agility_Forge/GNN/runs_3dim/README.md
 applications/Agility_Forge/GNN/mp_sweep/mp_*/
 
 # SVD/POD analysis output (singular values, effective-dimension json, plot)
@@ -74,4 +75,21 @@ OSU_materials/
 # GNN finetuning output (metrics, plots, eval .vtu dumps; wiped and
 # regenerated on every submit_gnn_finetune_square.sh run). Results are
 # recorded in GNN/README.md.
-applications/Agility_Forge/GNN/finetune_square/
+applications/Agility_Forge/GNN/finetune_square/*
+!applications/Agility_Forge/GNN/finetune_square/README.md
+
+# New depth sweep (GNN/mp_sweep/): per-run training/eval output is bulky and
+# regenerable; README, summarize.py, summary.json, the report plots and the
+# pinned rollout snapshot stay tracked (checkpoints are covered by *.pt).
+applications/Agility_Forge/GNN/mp_sweep/pretrain/
+applications/Agility_Forge/GNN/mp_sweep/finetune/
+applications/Agility_Forge/GNN/joint_training/
+
+# Real-simulator MPC solver checkpoints (full plant state for resuming a run;
+# ~50 MB each) -- local only.
+applications/Agility_Forge/control/results/**/plant_state.npz
+# Gap-control GNN training output (regenerable; results are in
+# progress/GNN_reports/2026-09-27_gap_control/).
+applications/Agility_Forge/GNN/gap_control/
+# Second message-passing sweep: per-run finetune output (regenerable).
+applications/Agility_Forge/GNN/mp_sweep_finished/finetune/

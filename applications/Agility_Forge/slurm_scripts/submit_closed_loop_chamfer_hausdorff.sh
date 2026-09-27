@@ -18,7 +18,7 @@
 # (job 3824244). Standard 5-hit closed-loop GNN-MPC (run_closed_loop.py,
 # unchanged design -- re-plans from the real plant's true state before every
 # hit) targeting rollout 415's true hit-5 geometry, same target used for the
-# original M=15 validation (control/mpc_target_rollout_415/) and the
+# original M=15 validation (control/results/before_2026-09-26_fixes/rollout_415/) and the
 # extended-horizon pilots. Only the model differs here: checkpoint_mp_5_
 # chamfer_hausdorff.pt (message_passing_steps=5), trained with Chamfer+
 # Hausdorff loss terms added (weight 1.0 each) on top of the per-node MSE,
@@ -54,6 +54,6 @@ python -m applications.Agility_Forge.control.run_closed_loop \
     --target-rollout 415 \
     --checkpoint-path applications/Agility_Forge/GNN/mp_sweep/checkpoint_mp_5_chamfer_hausdorff.pt \
     --message-passing-steps 5 \
-    --out-dir applications/Agility_Forge/control/mpc_target_rollout_415_chamfer_hausdorff
+    --out-dir applications/Agility_Forge/control/results/before_2026-09-26_fixes/rollout_415_chamfer_hausdorff
 
 echo "Job finished: $(date)"

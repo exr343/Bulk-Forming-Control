@@ -60,6 +60,6 @@ echo "GPU assigned:"
 nvidia-smi --query-gpu=name,memory.total --format=csv || echo "(nvidia-smi not available)"
 
 python -m applications.Agility_Forge.control.eval_closed_loop_test_set \
-    --out-dir applications/Agility_Forge/control/eval_closed_loop_test_set
+    --out-dir applications/Agility_Forge/control/results/before_2026-09-26_fixes/closed_loop_test_set
 
 echo "Job finished: $(date)"

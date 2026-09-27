@@ -45,6 +45,6 @@ python -m applications.Agility_Forge.control.eval_prism_target \
     --apothem-mm 6.4375 \
     --u-j-mm-min 0.0 \
     --checkpoint-path applications/Agility_Forge/GNN/mp_sweep/checkpoint_mp_5_chamfer_hausdorff.pt \
-    --out-dir applications/Agility_Forge/control/mpc_prism_target_chamfer_hausdorff
+    --out-dir applications/Agility_Forge/control/results/before_2026-09-26_fixes/prism_target_chamfer_hausdorff
 
 echo "Job finished: $(date)"

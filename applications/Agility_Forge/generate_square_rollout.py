@@ -41,9 +41,24 @@ square bulge (0.38) / thin (0.58) / square head (0.78). Phase 1 squares all
 four to 10.6 mm with the passes above (32 hits); phase 2 thins zones 1 and 3
 to 8.5 mm over three more passes, 9.9 -> 9.2 -> 8.5 mm (12 hits). 44 hits.
 
+Finishing phase (--finish-from, settled 2026-09-27): the 48-hit schedule
+leaves the bar short of 10.6 mm (each pass ends on the 90 deg hit, which
+bulges the 0 deg direction back out; the 2 mm cap also bites). With
+--finish-from SRC, SRC (a completed square run) is copied to --dataset-dir
+and continued from its saved state: sweep the run's own stations clamp to
+tip, and at each station press whichever of 0 / 90 deg is still thicker than
+10.6 + --finish-tol-mm (measured along 0 / 90 deg), to the nominal 10.6 mm
+(half-gap --finish-half-gap-mm, stroke from the current surface, 2 mm cap),
+with the run's per-hit angle jitter (+/- --jitter-angle-deg; none for the
+unjittered run). Stops when a full sweep needs no hit, or after
+--finish-max-hits extra hits. Finishing records have pass = "finish".
+
 Usage:
     python -m applications.Agility_Forge.generate_square_rollout \\
         --dataset-dir applications/Agility_Forge/data/dataset_finetuning/square
+    python -m applications.Agility_Forge.generate_square_rollout --jitter-seed 1 \\
+        --finish-from applications/Agility_Forge/data/dataset_finetuning/square_jitter_seed1 \\
+        --dataset-dir applications/Agility_Forge/data/dataset_finetuning/finished/square_jitter_seed1
     python -m applications.Agility_Forge.generate_square_rollout --part bulge_head \\
         --dataset-dir applications/Agility_Forge/data/dataset_finetuning/bulge_head
 """
@@ -51,6 +66,7 @@ Usage:
 import argparse
 import json
 import os
+import shutil
 import time
 import traceback
 from datetime import datetime, timezone
@@ -133,17 +149,41 @@ def build_bulge_head_schedule():
     return phase1 + phase2
 
 
-def band_half_thickness(mesh, R, H, sol_u, d_j_frac, R_j_deg):
+def band_half_thickness(mesh, R, H, sol_u, d_j_frac, R_j_deg, x_min_mm=None):
     """Half the current distance between the two extreme outer-surface nodes
     in the band, measured along the press direction -- the same candidate set
-    and rotated frame build_cylinder_press_bcs uses to place the platens."""
+    and rotated frame build_cylinder_press_bcs uses to place the platens.
+    `x_min_mm` (optional) drops band nodes whose original x is below it."""
     pts = onp.asarray(mesh.points)
     r_ref = onp.hypot(pts[:, 1], pts[:, 2])
     x_lo, x_hi = d_j_frac * H, (d_j_frac + BAND_WIDTH_FRAC) * H
+    if x_min_mm is not None:
+        x_lo = max(x_lo, x_min_mm)
     cand = (onp.abs(r_ref - R) <= 0.1 * R) & (pts[:, 0] >= x_lo) & (pts[:, 0] <= x_hi)
     rot = onp.array(Rotation.from_euler("x", R_j_deg, degrees=True).as_matrix())
     y = ((pts[cand] + onp.asarray(sol_u)[cand]) @ rot.T)[:, 1]
     return 0.5 * float(y.max() - y.min())
+
+
+# Stop rule (settled 2026-09-27; the finishing phase's "converged" test, and
+# the GNN-MPC runs' stop rule in control/eval_square_target.py): the part is
+# done when, in every check window (the 19.3 mm die band at each of the six
+# square-run stations), the bar is at most 2 * half-gap + tol across at both
+# 0 and 90 deg. One-sided: thinner than the target is not flagged (forging
+# can't add metal back). `x_min_mm` limits the windows to original x >= it
+# (the MPC uses the target's square-section start, so the taper and the
+# unpressable stretch below the 800 C point are not required to be 10.6 mm).
+SQUARE_STATIONS_D_J = onp.linspace(0.17, 0.78, 6)  # the unjittered square run's stations
+
+
+def across_by_station(mesh, R, H, sol_u, stations_d_j, x_min_mm=None):
+    """{station number: [across at 0 deg, across at 90 deg]} in mm."""
+    return {i + 1: [2.0 * band_half_thickness(mesh, R, H, sol_u, float(d), a, x_min_mm) for a in (0.0, 90.0)]
+            for i, d in enumerate(stations_d_j)}
+
+
+def within_tolerance(across, half_gap_mm, tol_mm):
+    return all(max(v) <= 2.0 * half_gap_mm + tol_mm for v in across.values())
 
 
 def save_checkpoint(path, state, completed_hits, next_sched_idx, pending_half_mm):
@@ -212,6 +252,12 @@ def main():
     p.add_argument("--jitter-station-mm", type=float, default=3.7)
     p.add_argument("--jitter-angle-deg", type=float, default=5.0)
     p.add_argument("--jitter-gap-mm", type=float, default=0.2)
+    p.add_argument("--finish-from", default=None,
+                   help="square only: copy this completed run to --dataset-dir and add the finishing phase.")
+    p.add_argument("--finish-half-gap-mm", type=float, default=5.3)
+    p.add_argument("--finish-tol-mm", type=float, default=0.2,
+                   help="Done when every station is at most 2 * half-gap + tol across at 0 and 90 deg.")
+    p.add_argument("--finish-max-hits", type=int, default=52)
     p.add_argument("--part", choices=["square", "bulge_head"], default="square",
                    help="square: uniform square along the bar (the --half-gaps/--d-j/--n-stations args). "
                         "bulge_head: fixed T2.4-inspired thin/bulge/thin/head schedule (ignores those args).")
@@ -230,6 +276,11 @@ def main():
                          "phase2_half_gaps_mm": BULGE_HEAD_PHASE2_HALF_GAPS,
                          "source": "OSU_materials/target_geometries/T2.4.stl (inspiration only)"}
 
+    if args.finish_from:
+        assert args.part == "square", "--finish-from is for square runs"
+        if not os.path.exists(args.dataset_dir):
+            shutil.copytree(args.finish_from, args.dataset_dir)
+            print(f"Copied {args.finish_from} -> {args.dataset_dir}")
     rollout_dir = os.path.join(args.dataset_dir, "rollout_01")
     os.makedirs(rollout_dir, exist_ok=True)
     ckpt_path = os.path.join(rollout_dir, "checkpoint.npz")
@@ -302,6 +353,34 @@ def main():
         print(f"  hit {completed} done: u={u_mm:.3f} mm, {time.time() - t0:.0f}s wall")
         return new_state
 
+    def run_with_retry(state, entry, u, save_pending):
+        """One hit; on failure, retry once as two half-strokes (logged to
+        failed_hits.jsonl). `save_pending`: checkpoint the pending second
+        half so a crash in between resumes it (schedule loop only)."""
+        try:
+            return run_hit(state, entry, u, split_part=0)
+        except Exception as exc:
+            log_failure(args.dataset_dir, {**entry, "u_attempted_mm": u, "attempt": "full",
+                                           "after_hit": completed, "error": repr(exc),
+                                           "traceback": traceback.format_exc(),
+                                           "timestamp": datetime.now(timezone.utc).isoformat()})
+            print(f"  [FAILED] full stroke {u:.3f} mm ({exc!r}); retrying as two half-strokes")
+            half = 0.5 * u
+            for part in (1, 2):
+                try:
+                    state = run_hit(state, entry, half, split_part=part)
+                except Exception as exc2:
+                    log_failure(args.dataset_dir, {**entry, "u_attempted_mm": half, "attempt": f"half_{part}",
+                                                   "after_hit": completed, "error": repr(exc2),
+                                                   "traceback": traceback.format_exc(),
+                                                   "timestamp": datetime.now(timezone.utc).isoformat()})
+                    print(f"  [FAILED] half-stroke {part}/2 also failed ({exc2!r}); stopping. "
+                          f"Rollout truncated at {completed} hits (still loadable).")
+                    raise SystemExit(1)
+                if part == 1 and save_pending:
+                    save_checkpoint(ckpt_path, state, completed, sched_idx, half)
+            return state
+
     t_start = time.time()
     while sched_idx < len(schedule):
         entry = dict(schedule[sched_idx], idx=sched_idx)
@@ -324,28 +403,7 @@ def main():
         print(f"  current half-thickness {ht:.3f} mm -> stroke needed {u_needed:.3f} mm, applying {u:.3f} mm"
               + ("  [CAPPED]" if entry["capped"] else ""))
 
-        try:
-            state = run_hit(state, entry, u, split_part=0)
-        except Exception as exc:
-            log_failure(args.dataset_dir, {**entry, "u_attempted_mm": u, "attempt": "full",
-                                           "after_hit": completed, "error": repr(exc),
-                                           "traceback": traceback.format_exc(),
-                                           "timestamp": datetime.now(timezone.utc).isoformat()})
-            print(f"  [FAILED] full stroke {u:.3f} mm ({exc!r}); retrying as two half-strokes")
-            half = 0.5 * u
-            for part in (1, 2):
-                try:
-                    state = run_hit(state, entry, half, split_part=part)
-                except Exception as exc2:
-                    log_failure(args.dataset_dir, {**entry, "u_attempted_mm": half, "attempt": f"half_{part}",
-                                                   "after_hit": completed, "error": repr(exc2),
-                                                   "traceback": traceback.format_exc(),
-                                                   "timestamp": datetime.now(timezone.utc).isoformat()})
-                    print(f"  [FAILED] half-stroke {part}/2 also failed ({exc2!r}); stopping. "
-                          f"Rollout truncated at {completed} hits (still loadable).")
-                    raise SystemExit(1)
-                if part == 1:
-                    save_checkpoint(ckpt_path, state, completed, sched_idx, half)
+        state = run_with_retry(state, entry, u, save_pending=True)
 
         sched_idx += 1
         save_checkpoint(ckpt_path, state, completed, sched_idx, None)
@@ -355,6 +413,65 @@ def main():
     capped = [r["hit"] for r in manifest.data["records"] if r.get("capped")]
     print(f"Hits limited by the {args.max_stroke} mm stroke cap: {capped or 'none'}")
     print("#" * 80)
+
+    if not args.finish_from:
+        return
+    # ---- Finishing phase ----
+    fin = manifest.data.setdefault("finish_config", {
+        "source": args.finish_from, "half_gap_mm": args.finish_half_gap_mm, "tol_mm": args.finish_tol_mm,
+        "max_hits": args.finish_max_hits, "start_hit": completed,
+        "angle_jitter_deg": args.jitter_angle_deg if args.jitter_seed is not None else 0.0})
+    manifest._write()
+    target_mm = 2.0 * fin["half_gap_mm"] + fin["tol_mm"]
+    stations_run = []
+    for e in schedule:  # the run's own (possibly jittered) stations, clamp to tip
+        if e["station"] not in [sid for sid, _ in stations_run]:
+            stations_run.append((e["station"], e["d_j_frac"]))
+    sweep, done = 0, False
+    while not done:
+        sweep += 1
+        applied = 0
+        for sid, d_j in stations_run:
+            for base in (0.0, 90.0):
+                if completed - fin["start_hit"] >= fin["max_hits"]:
+                    print(f"Finishing stopped at the {fin['max_hits']}-hit limit.")
+                    done = True
+                    break
+                across = 2.0 * band_half_thickness(mesh, R, H, state.sol_u, d_j, base)
+                if across <= target_mm:
+                    continue
+                # Deterministic per-hit angle offset (reproducible across resumes).
+                rng = onp.random.default_rng([args.jitter_seed or 0, completed])
+                R_j = base + (rng.uniform(-fin["angle_jitter_deg"], fin["angle_jitter_deg"])
+                              if fin["angle_jitter_deg"] else 0.0)
+                ht = band_half_thickness(mesh, R, H, state.sol_u, d_j, R_j)
+                u_needed = ht - fin["half_gap_mm"]
+                u = float(onp.clip(u_needed, 0.0, args.max_stroke))
+                if u < 0.05:
+                    continue
+                entry = {"pass": "finish", "station": sid, "d_j_frac": d_j, "R_j_deg": float(R_j),
+                         "half_gap_mm": fin["half_gap_mm"], "idx": -1, "u_needed_mm": u_needed,
+                         "capped": bool(u_needed > args.max_stroke)}
+                print("\n" + "=" * 80)
+                print(f"FINISH sweep {sweep}, extra hit {completed - fin['start_hit'] + 1}/{fin['max_hits']}: "
+                      f"station {sid} {base:.0f} deg ({across:.2f} mm across > {target_mm:.2f}) R={R_j:.1f} "
+                      f"stroke {u:.3f} mm" + ("  [CAPPED]" if entry["capped"] else ""))
+                state = run_with_retry(state, entry, u, save_pending=False)
+                save_checkpoint(ckpt_path, state, completed, sched_idx, None)
+                applied += 1
+            if done:
+                break
+        if applied == 0:
+            print(f"Finished: every station within {target_mm:.2f} mm at 0 and 90 deg after sweep {sweep}.")
+            done = True
+    widths = {sid: [round(2.0 * band_half_thickness(mesh, R, H, state.sol_u, d_j, b), 3) for b in (0.0, 90.0)]
+              for sid, d_j in stations_run}
+    fin.update(end_hit=completed, n_extra_hits=completed - fin["start_hit"],
+               final_across_mm_by_station={str(k): v for k, v in widths.items()},
+               converged=all(max(v) <= target_mm for v in widths.values()))
+    manifest._write()
+    print(f"FINISHING DONE: {fin['n_extra_hits']} extra hits, converged={fin['converged']}, "
+          f"across (0/90 deg) by station: {widths}")
 
 
 if __name__ == "__main__":

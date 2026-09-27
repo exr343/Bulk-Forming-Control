@@ -11,7 +11,7 @@ timeout partway through a multi-hour run still leaves usable partial output.
 
 Usage:
     python -m applications.Agility_Forge.control.run_closed_loop \\
-        --target-rollout 415 --out-dir applications/Agility_Forge/control/mpc_target_rollout_415
+        --target-rollout 415 --out-dir applications/Agility_Forge/control/results/before_2026-09-26_fixes/rollout_415
 """
 
 import argparse

@@ -19,7 +19,7 @@
 # more real hits than the training data's fixed 5-hit schedule let it
 # converge closer to a fixed target, or does extrapolating the GNN surrogate
 # past hit 5 (states it was never trained on) make things worse? Target
-# stays fixed at mpc_target_rollout_415's true hit-5 geometry throughout;
+# stays fixed at results/before_2026-09-26_fixes/rollout_415's true hit-5 geometry throughout;
 # hits 6-10 have no real ground truth for this rollout at all.
 #
 # Cheap relative to the full sweep: one rollout, ~10 real hits. At the
@@ -76,6 +76,6 @@ python -m applications.Agility_Forge.control.eval_extended_horizon \
     --target-rollout 415 \
     --n-hits 10 \
     --u-j-mm-min 0.0 \
-    --out-dir applications/Agility_Forge/control/mpc_target_rollout_415_10hits
+    --out-dir applications/Agility_Forge/control/results/before_2026-09-26_fixes/rollout_415_10hits
 
 echo "Job finished: $(date)"
