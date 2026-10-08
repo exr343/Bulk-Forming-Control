@@ -33,12 +33,26 @@ figures), or after 20 cycles. The x ~ 27 mm spot next to the taper is not
 checked: no data run ever got it below 11-13 mm. The simulator uses the
 direct linear solver (late reheats fail with the iterative one).
 
+Ensemble uncertainty penalty (2026-10-08; deep ensembles, Lakshminarayanan et
+al. 2017, used inside MPC as in PETS, Chua et al. 2018, with a variance penalty
+on the objective as in MOPO, Yu et al. 2020): with --checkpoints, each member
+GNN rolls the plan forward on its own from the same scan (its own shape and
+temperature hit to hit, the same reheat rule), and the cost becomes
+    J = sum_k cross_section(x_bar_k, target) + lambda * sum_k s_k,
+x_bar_k the members' mean shape after hit k, s_k the sum over surface nodes of
+the across-member variance (1/M) of the y and z displacement. Both terms are in
+mm^2, so lambda (--var-weight) is dimensionless; with 1/M variance, lambda = 1
+equals the members' mean own cost. Used in the screening and the SLSQP
+refinement alike. One checkpoint (--checkpoint) with lambda = 0 is the previous
+planner exactly.
+
 The run is saved in generate_square_coil_rollout.py's manifest format
 (records/reheats + one .vtu per hit and reheat), so MPC-visited hits can be
 added to GNN training later. Checkpoints after every hit and reheat; rerun
 the same command to resume.
 
     python -m applications.Agility_Forge.control.mpc_coil --checkpoint <coil_T GNN .pt> --out-dir <dir>
+    python -m applications.Agility_Forge.control.mpc_coil --checkpoints <.pt> <.pt> ... --var-weight 1 --out-dir <dir>
 """
 
 import argparse
@@ -124,6 +138,44 @@ def cross_section_cost(shapes, x_tgt):
     return sum(((x - x_tgt)[:, 1:] ** 2).sum() for x in shapes)
 
 
+def _cross_section_cost_batch(shapes, x_tgt):
+    """cross_section_cost for (B, N, 3) shapes -> (B,)."""
+    cost = torch.zeros(shapes[0].shape[0], device=shapes[0].device)
+    for x in shapes:
+        cost = cost + ((x - x_tgt[None])[..., 1:] ** 2).sum(dim=(1, 2))
+    return cost
+
+
+def ensemble_cost(member_shapes, x_tgt, var_weight=0.0):
+    """member_shapes: per ensemble member, its 6 forecast displacements, each
+    (N, 3), or (B, N, 3) for a batch of plans. Returns (total, cross, spread):
+      cross  = cross-section cost of the members' mean shapes x_bar_k;
+      spread = sum over the 6 steps of s_k = sum over nodes of the across-member
+               variance (1/M) of the y and z displacement, mm^2;
+      total  = cross + var_weight * spread.
+    One member: cross is cross_section_cost exactly and spread is 0."""
+    batched = member_shapes[0][0].dim() == 3
+    if len(member_shapes) == 1:
+        shapes = member_shapes[0]
+        cross = _cross_section_cost_batch(shapes, x_tgt) if batched else cross_section_cost(shapes, x_tgt)
+        spread = torch.zeros_like(cross)
+    else:
+        stacks = [torch.stack([m[k] for m in member_shapes]) for k in range(len(member_shapes[0]))]   # (M, [B,] N, 3)
+        shapes = [st.mean(dim=0) for st in stacks]
+        cross = _cross_section_cost_batch(shapes, x_tgt) if batched else cross_section_cost(shapes, x_tgt)
+        spread = sum(st[..., 1:].var(dim=0, unbiased=False).sum(dim=(-2, -1)) for st in stacks)
+    total = cross + var_weight * spread if var_weight else cross
+    return total, cross, spread
+
+
+def yz_spread_by_step(member_shapes):
+    """s_k for each step k (floats; zeros for one member)."""
+    if len(member_shapes) == 1:
+        return [0.0] * len(member_shapes[0])
+    return [float(torch.stack([m[k] for m in member_shapes])[..., 1:].var(dim=0, unbiased=False).sum())
+            for k in range(len(member_shapes[0]))]
+
+
 # ----------------------------------------------------------------------------
 # Batched forecast for screening (many plans at once, no per-sample loop)
 # ----------------------------------------------------------------------------
@@ -156,9 +208,9 @@ def node_features_batch(mesh, x, T, c, a_deg, u):
                       T[..., None], tail[:, None, :].expand(B, n, 4)], dim=-1)
 
 
-def forecast_cost_batch(model, mesh, x_scan, T_scan, ctrl, first, x_tgt):
-    """ctrl (B, 6, 3) -> the existing cost (cross-section error summed over the 6
-    forecast shapes) for each plan, (B,). Same rules as forecast(..., smooth=True)."""
+def forecast_batch(model, mesh, x_scan, T_scan, ctrl, first):
+    """ctrl (B, 6, 3) -> one model's 6 forecast displacements, each (B, N, 3).
+    Same rules as forecast(..., smooth=True)."""
     B = ctrl.shape[0]
     c = ctrl[:, :, 0].mean(dim=1)
     x = x_scan[None].expand(B, -1, -1)
@@ -169,11 +221,20 @@ def forecast_cost_batch(model, mesh, x_scan, T_scan, ctrl, first, x_tgt):
                        torch.zeros(B, mesh.n, 4, device=x.device), x, T[..., None],
                        ((T - T_scan[None]) / DT_SCALE)[..., None], torch.zeros(B, mesh.n, 3, device=x.device)], dim=-1)
         x = model.step_shape(f, x)
-    cost = torch.zeros(B, device=x.device)
+    shapes = []
     for k in range(ctrl.shape[1]):
         x, T = model.step(node_features_batch(mesh, x, T, ctrl[:, k, 0], ctrl[:, k, 1], ctrl[:, k, 2]), x, T)
-        cost = cost + ((x - x_tgt[None])[..., 1:] ** 2).sum(dim=(1, 2))
-    return cost
+        shapes.append(x)
+    return shapes
+
+
+def forecast_cost_batch(model, mesh, x_scan, T_scan, ctrl, first, x_tgt, var_weight=0.0):
+    """ctrl (B, 6, 3) -> the cost of each plan, (B,). `model`: one GNN (the
+    cross-section error summed over the 6 forecast shapes, as before) or a list
+    of ensemble members, each rolling the same batch of plans (ensemble_cost)."""
+    models = model if isinstance(model, (list, tuple)) else [model]
+    members = [forecast_batch(m, mesh, x_scan, T_scan, ctrl, first) for m in models]
+    return ensemble_cost(members, x_tgt, var_weight)[0]
 
 
 def training_action_ranges(root=f"{AF}/data/dataset_die12_coil_5pass"):
@@ -205,11 +266,16 @@ class Planner:
 
     mode "default" (or n_samples <= 1) is the previous single-start planner (the
     data runs' pattern as the start); mode "random" refines K uniform random
-    starts without screening (ablation)."""
+    starts without screening (ablation).
+
+    `model`: one GNN, or a list of ensemble members; the cost is then
+    ensemble_cost with `var_weight` (lambda) in A and C alike."""
 
     def __init__(self, model, mesh, x_tgt, device, maxiter=100, n_samples=100, top_k=5, sample_batch=50, seed=0,
-                 sample_train_range=False, include_warm_start=False):
-        self.model, self.mesh, self.x_tgt, self.device, self.maxiter = model, mesh, x_tgt, device, maxiter
+                 sample_train_range=False, include_warm_start=False, var_weight=0.0):
+        self.models = list(model) if isinstance(model, (list, tuple)) else [model]
+        self.model, self.var_weight = self.models[0], float(var_weight)
+        self.mesh, self.x_tgt, self.device, self.maxiter = mesh, x_tgt, device, maxiter
         self.n_samples, self.top_k, self.sample_batch, self.seed = n_samples, top_k, sample_batch, seed
         self.sample_train_range, self.include_warm_start = sample_train_range, include_warm_start
         self.train_ranges = training_action_ranges()
@@ -250,8 +316,8 @@ class Planner:
         costs = []
         for i in range(0, len(U), self.sample_batch):
             ctrl = torch.tensor(U[i:i + self.sample_batch], dtype=torch.float32, device=self.device)
-            costs.append(forecast_cost_batch(self.model, self.mesh, x_scan, T_scan, ctrl.view(-1, HITS_PER_CYCLE, 3),
-                                             first, self.x_tgt))
+            costs.append(forecast_cost_batch(self.models, self.mesh, x_scan, T_scan, ctrl.view(-1, HITS_PER_CYCLE, 3),
+                                             first, self.x_tgt, self.var_weight))
         return torch.cat(costs).cpu().numpy().astype(onp.float64)
 
     def _refine(self, u0, lo, span, x_scan, T_scan, first):
@@ -261,8 +327,8 @@ class Planner:
         def cost_grad(z):
             nfev[0] += 1
             u = torch.tensor(lo + z * span, dtype=torch.float32, device=self.device, requires_grad=True)
-            shapes, _ = forecast(self.model, self.mesh, x_scan, T_scan, u.view(HITS_PER_CYCLE, 3), first)
-            cost = cross_section_cost(shapes, self.x_tgt)
+            members = [forecast(m, self.mesh, x_scan, T_scan, u.view(HITS_PER_CYCLE, 3), first)[0] for m in self.models]
+            cost = ensemble_cost(members, self.x_tgt, self.var_weight)[0]
             cost.backward()
             return cost.item(), u.grad.cpu().numpy().astype(onp.float64) * span
 
@@ -273,16 +339,26 @@ class Planner:
         res = minimize(lambda z: tuple(v / c0 for v in cost_grad(z)), z0, jac=True, method="SLSQP",
                        bounds=[(0.0, 1.0)] * len(z0), options={"maxiter": self.maxiter})
         z = onp.clip(res.x, 0.0, 1.0)
-        return lo + z * span, {"initial_cost": c0, "final_cost": float(res.fun) * c0, "nit": int(res.nit),
+        return lo + z * span, {"terms": self.cost_terms(lo + z * span, x_scan, T_scan, first), "initial_cost": c0, "final_cost": float(res.fun) * c0, "nit": int(res.nit),
                                "nfev": nfev[0], "message": str(res.message), "status": int(res.status),
                                "time_s": time.perf_counter() - t0,
                                "start_grad_norm": float(onp.linalg.norm(g0)), "start_grad_finite": bool(onp.isfinite(g0).all()),
                                "n_at_bound": int(((z <= 1e-9) | (z >= 1 - 1e-9)).sum())}
 
+    @torch.no_grad()
+    def cost_terms(self, u, x_scan, T_scan, first):
+        """The cost of plan u split into its cross-section and spread terms."""
+        ut = torch.tensor(onp.asarray(u).reshape(HITS_PER_CYCLE, 3), dtype=torch.float32, device=self.device)
+        members = [forecast(m, self.mesh, x_scan, T_scan, ut, first)[0] for m in self.models]
+        total, cross, spread = ensemble_cost(members, self.x_tgt, self.var_weight)
+        return {"cost": float(total), "cross_section_mm2": float(cross), "spread_mm2": float(spread),
+                "var_weight": self.var_weight, "n_members": len(self.models)}
+
     def plan(self, x_scan, T_scan, first, pointer, cycle=0, warm=None, mode="topk"):
         b, x0, hi = self.bounds(x_scan)
         lo = onp.array([v[0] for v in b]); span = onp.array([v[1] - v[0] for v in b])
-        self.model.eval()
+        for m in self.models:
+            m.eval()
         rng = onp.random.default_rng([self.seed, cycle])
         if mode == "topk" and self.n_samples <= 1:
             mode = "default"
@@ -320,7 +396,7 @@ class Planner:
                      "selected": idx, "starts": [r for _, r in runs], "best_start": best,
                      "time_s": {"A_screen": tA, "B_select": tB, "C_refine": tC},
                      "screen_time_per_rollout_s": tA / self.n_samples if screen is not None else None})
-        info = {"initial_cost": rb["initial_cost"], "final_cost": rb["final_cost"], "nit": rb["nit"],
+        info = {"initial_cost": rb["initial_cost"], "final_cost": rb["final_cost"], "cost_terms": rb["terms"], "nit": rb["nit"],
                 "message": rb["message"], "plan_time_s": time.perf_counter() - t0, "bounds_die_mm": [x0, hi],
                 "multistart": diag}
         return u.reshape(HITS_PER_CYCLE, 3), info
@@ -347,7 +423,11 @@ def widths_ok(mesh, x, tol_mm=0.2, side=10.6):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--checkpoint", required=True, help="coil_T GNN checkpoint (GNN/coil_T_sweep_test_square/mp_M/stage3.pt).")
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument("--checkpoint", help="coil_T GNN checkpoint (GNN/coil_T_sweep_test_square/mp_M/stage3.pt).")
+    g.add_argument("--checkpoints", nargs="+", help="Ensemble: several coil_T checkpoints (deep ensemble).")
+    p.add_argument("--var-weight", type=float, default=0.0,
+                   help="lambda: weight of the ensemble spread in the cost (dimensionless; both terms mm^2).")
     p.add_argument("--out-dir", required=True)
     p.add_argument("--max-cycles", type=int, default=20)
     p.add_argument("--stop-tol-mm", type=float, default=0.2)
@@ -370,12 +450,14 @@ def main():
 
     dev = args.device
     mesh = Mesh(MESH_VTU, dev)
-    model = load_gnn(mesh, args.checkpoint, dev)
-    model.freeze_normalizers()
+    ckpts = args.checkpoints or [args.checkpoint]
+    models = [load_gnn(mesh, c, dev) for c in ckpts]
+    for m in models:
+        m.freeze_normalizers()
     import meshio
     x_tgt = torch.tensor(meshio.read(TARGET_VTU).point_data["Displacement"], dtype=torch.float32, device=dev)
-    planner = Planner(model, mesh, x_tgt, dev, args.maxiter, args.n_samples, args.top_k, args.sample_batch, args.seed,
-                      args.sample_train_range, args.include_warm_start)
+    planner = Planner(models, mesh, x_tgt, dev, args.maxiter, args.n_samples, args.top_k, args.sample_batch, args.seed,
+                      args.sample_train_range, args.include_warm_start, args.var_weight)
     print("training-data action ranges (for comparison with the bounds):", json.dumps(planner.train_ranges), flush=True)
 
     os.makedirs(f"{args.out_dir}/rollout_01", exist_ok=True)
@@ -386,7 +468,10 @@ def main():
     pts = onp.asarray(fmesh.points)
     surf = mesh.full_to_surface
     manifest = Manifest(args.out_dir, {"part": "square_coil_mpc",
-                                       "mpc": {"checkpoint": args.checkpoint, "cost": "cross-section, sum over 6",
+                                       "mpc": {"checkpoint": args.checkpoint, "checkpoints": ckpts, "n_members": len(ckpts),
+                                               "var_weight": args.var_weight,
+                                               "cost": "cross-section of the members' mean shape, sum over 6"
+                                                       " + var_weight * members' y,z variance, sum over nodes and 6",
                                                "gnn_state": "displacement + temperature (coil_T.py)",
                                                "temperature_at_scan": "measured (simulator surface temperature, an IR camera in practice)",
                                                "stroke_mm": [U_MIN_MM, U_MAX_MM], "angle_deg": list(ANGLE_RANGE),
@@ -447,8 +532,14 @@ def main():
             warm = [[e_["die_center_mm"], e_["R_j_deg"], e_["u_j_mm"]] for e_ in sched["plan"]] or None
             u, info = planner.plan(x_scan, T_scan, first, sched["pointer"], cycle=sched["cycle"] + 1, warm=warm)
             with torch.no_grad():
-                pred, predT = forecast(model, mesh, x_scan, T_scan, torch.tensor(u, dtype=torch.float32, device=dev),
-                                       first, smooth=False)
+                ut = torch.tensor(u, dtype=torch.float32, device=dev)
+                fc = [forecast(m, mesh, x_scan, T_scan, ut, first, smooth=False) for m in models]
+            if len(models) == 1:
+                pred, predT = fc[0]
+            else:                                      # the members' mean; the members are saved too
+                pred = [torch.stack([f[0][k] for f in fc]).mean(0) for k in range(HITS_PER_CYCLE)]
+                predT = [torch.stack([f[1][k] for f in fc]).mean(0) for k in range(HITS_PER_CYCLE)]
+                info["forecast_spread_mm2_by_hit"] = yz_spread_by_step([f[0] for f in fc])
             c = float(u[:, 0].mean())
             sched.update(plan=[{"die_center_mm": float(r[0]), "R_j_deg": float(r[1]), "u_j_mm": float(r[2])} for r in u],
                          pos=0, reheated=False, cycle=sched["cycle"] + 1, coil_center_mm=c,
@@ -457,13 +548,18 @@ def main():
                      onp.stack([p_.cpu().numpy() for p_ in pred]))
             onp.save(f"{args.out_dir}/rollout_01/cycle_{sched['cycle']:02d}_forecast_T.npy",
                      onp.stack([p_.cpu().numpy() for p_ in predT]))
+            if len(models) > 1:
+                onp.save(f"{args.out_dir}/rollout_01/cycle_{sched['cycle']:02d}_forecast_members.npy",
+                         onp.stack([[p_.cpu().numpy() for p_ in f[0]] for f in fc]))
             manifest.data["cycles"].append({"cycle": sched["cycle"], "start_hit": sched["completed"] + 1,
                                             "coil_center_mm": c, "plan": sched["plan"], "worst_width_at_scan_mm": worst,
                                             **info})
             manifest._write()
             save_ckpt(state, sched)
+            ct = info["cost_terms"]
             print(f"[cycle {sched['cycle']}] coil {c:.1f} mm, plan {onp.round(u, 2).tolist()}, cost "
-                  f"{info['initial_cost']:.3e} -> {info['final_cost']:.3e} ({info['nit']} it, {info['plan_time_s']:.0f} s)",
+                  f"{info['initial_cost']:.3e} -> {info['final_cost']:.3e} ({info['nit']} it, {info['plan_time_s']:.0f} s); "
+                  f"cross-section {ct['cross_section_mm2']:.3e}, spread {ct['spread_mm2']:.3e} mm^2, lambda {ct['var_weight']:g}",
                   flush=True)
 
         if not sched["reheated"]:
@@ -501,6 +597,8 @@ def main():
         e = sched["plan"][sched["pos"]]
         pred = onp.load(f"{args.out_dir}/rollout_01/cycle_{sched['cycle']:02d}_forecast.npy")[sched["pos"]]
         predT = onp.load(f"{args.out_dir}/rollout_01/cycle_{sched['cycle']:02d}_forecast_T.npy")[sched["pos"]]
+        f_mem = f"{args.out_dir}/rollout_01/cycle_{sched['cycle']:02d}_forecast_members.npy"
+        spread = float(onp.load(f_mem)[:, sched["pos"], :, 1:].var(axis=0).sum()) if os.path.exists(f_mem) else None
 
         def apply(u_mm, split_part):
             nonlocal state
@@ -520,6 +618,10 @@ def main():
                           "forecast_rmse_mm": None if split_part == 1 else float(onp.sqrt(((pred - x_now) ** 2).mean())),
                           "forecast_T_abs_err_C": None if split_part == 1 else
                           float(onp.abs(predT - onp.asarray(state.sol_dT).reshape(-1)[surf]).mean()),
+                          **({} if spread is None else
+                             {"forecast_spread_mm2": None if split_part == 1 else spread,   # members' y,z variance, node sum
+                              "forecast_yz_sq_err_mm2": None if split_part == 1 else
+                              float(((pred - x_now)[:, 1:] ** 2).sum())}),
                           "free_end_mm": float((pts[:, 0] + onp.asarray(state.sol_u)[:, 0]).max()),
                           "wall_time_s": time.time() - t0, "vtu_path": rel})
             print(f"  hit {n} done ({time.time() - t0:.0f} s)"
