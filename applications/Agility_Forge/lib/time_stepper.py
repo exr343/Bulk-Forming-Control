@@ -39,8 +39,10 @@ class AutomaticTimeStepperTM:
         line_search_after=2,
         cool_factor=1.0,
         surface_inds=None,
+        linear_solver="jax",
     ):
         self.problem = problem
+        self.linear_solver = linear_solver   # "jax" (BiCGSTAB) or "scipy" (direct)
         self.total_time = float(total_time)
         self.dt = float(initial_dt)
         self.min_dt = float(min_dt)
@@ -193,7 +195,7 @@ class AutomaticTimeStepperTM:
                 # Solver options
                 use_ls = (retries >= self.line_search_after)
                 solver_options = {
-                    "jax_solver": {},
+                    f"{self.linear_solver}_solver": {},
                     "initial_guess": initial_guess,
                     "line_search_flag": use_ls,
                     'return_full_info': True

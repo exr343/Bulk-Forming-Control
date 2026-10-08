@@ -1,0 +1,32 @@
+{
+ "1": {
+  "cycle_chain_mean_hausdorff_mm": 0.8273862219519086,
+  "cycle_chain_mean_chamfer_mm2": 0.18086970559562798,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.851852872857341,
+  "reheat_step_error_mm": 0.13957538455724716,
+  "reheat_no_change_error_mm": 0.17601410961813396,
+  "short_stroke_rmse_before_mm": 0.05729884600261506,
+  "short_stroke_rmse_after_mm": 0.05844477037909134,
+  "gradient_time_s": 0.03070460632443428
+ },
+ "7": {
+  "cycle_chain_mean_hausdorff_mm": 0.7711458713920029,
+  "cycle_chain_mean_chamfer_mm2": 0.18173748368604314,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.7615127359275464,
+  "reheat_step_error_mm": 0.13674364694290692,
+  "reheat_no_change_error_mm": 0.17601410961813396,
+  "short_stroke_rmse_before_mm": 0.055478326044791804,
+  "short_stroke_rmse_after_mm": 0.05657709689920481,
+  "gradient_time_s": 0.09154833853244781
+ },
+ "8": {
+  "cycle_chain_mean_hausdorff_mm": 0.7555467116611975,
+  "cycle_chain_mean_chamfer_mm2": 0.17323494136885362,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.7633111405151861,
+  "reheat_step_error_mm": 0.13683479693200853,
+  "reheat_no_change_error_mm": 0.17601410961813396,
+  "short_stroke_rmse_before_mm": 0.0548336700051935,
+  "short_stroke_rmse_after_mm": 0.05572476075918008,
+  "gradient_time_s": 0.10348108410835266
+ }
+}

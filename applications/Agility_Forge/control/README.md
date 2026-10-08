@@ -210,3 +210,18 @@ resumes from the last completed hit. Output: `results/real_simulator/e0_original
   default model is a live option, not yet done.
 - **Only 5 closed-loop targets tested**, all drawn from the same held-out
   snapshot region; no systematic study of which targets are easy/hard yet.
+
+## MPC for the new simulator (`mpc_coil.py`) — built 2026-10-04, not yet run
+
+For the 12.7 mm die fixed in space with a coil reheat every 6 hits (a reheat keeps the hotter of current and coil temperature), using the coil GNN (`../GNN/coil.py`). The old `mpc.py` is unchanged.
+
+- **Cycle:** scan → plan 6 hits → reheat → apply all 6 hits to the simulator → scan. Single-shooting SQP (SLSQP), 18 variables: die centre, angle, stroke per hit.
+- **Coil and temperature:** the coil sits at the average of the 6 planned die centres, so moving a hit moves the coil. The GNN's temperature input is bookkept, never measured: cycle 1 gets the coil profile; each later reheat keeps the hotter of the bookkept temperature and the coil profile on the scanned shape (smooth max and smooth plateau edge while planning, exact when committed).
+- **Forecast:** GNN reheat step (none on cycle 1), then 6 GNN hit steps with the cycle's temperatures fixed.
+- **Cost:** cross-section (y, z) distance of every surface node to the ideal square target, summed over the 6 forecast shapes (as in e14).
+- **Bounds:** die centre 31.58 mm to the scanned free end − 6.35 − 3 mm; angle 0–180°; stroke 0.5–2 mm.
+- **Stop:** every width in the target's square region within 10.6 + 0.2 mm, or 13 cycles.
+- **Output:** the data runs' manifest format (so MPC-visited hits can be used for GNN training), the GNN's forecast per cycle, and the forecast error per hit. Checkpoints after every hit and reheat. `slurm_scripts/submit_mpc_coil.sh`.
+- **Tested:** end to end with a fake simulator and a stand-in GNN (stage 2, M = 2); not yet on the real simulator or with a trained stage-3 GNN.
+
+**Update 2026-10-08 (temperature in the GNN state, `GNN/coil_T.py`):** the scan also reads the real surface temperature (an IR camera in practice) instead of the bookkept estimate; the forecast applies the reheat rule (hotter of measured temperature and coil profile; cycle 1: the coil profile) and then 6 GNN hits that predict shape AND temperature, the temperature carried hit to hit; cost unchanged. Also decided: every die centre within ±11 mm of the coil centre (linear SLSQP constraints; the data's cycles spread ±10.7 mm), angles 0–180° kept, cap 20 cycles, stop check from the first station (31.58 mm; the x ≈ 27 mm spot next to the taper never got below 11–13 mm in any data run), direct linear solver in the simulator. Planning test on saved states (CPU): cost −5% (fresh billet) and −11% (after hit 40), coil-zone limit active, angles chosen within 6° of 0/90° though free; ~3 min per plan on CPU. First run: M = 5, job 3984018 → `results/coil_mpc_tstate_M5/`.

@@ -1,0 +1,1765 @@
+{
+ "device": "cuda",
+ "checkpoint": "applications/Agility_Forge/GNN/coil_T_sweep_test_square/mp_5/stage3.pt",
+ "run": "applications/Agility_Forge/data/dataset_die12_coil_5pass/square",
+ "n_samples": 200,
+ "top_k": 5,
+ "sample_batch": 50,
+ "checks": {
+  "batched_features_max_abs_diff": 0.0,
+  "batched_cost_max_rel_diff": 1.7749231062680337e-07,
+  "equivalence": {
+   "new_final_cost": 40431.0234375,
+   "reference_final_cost": 40431.0234375,
+   "rel_diff": 0.0,
+   "max_abs_plan_diff": 0.0
+  },
+  "determinism": {
+   "same_selected": true,
+   "max_abs_plan_diff": 0.0,
+   "max_abs_screen_cost_diff": 0.0
+  },
+  "gradients": {
+   "all_start_grads_finite": true,
+   "min_start_grad_norm": 4991.741296086013
+  }
+ },
+ "states": [
+  {
+   "state": "cycle 1 (before hit 1)",
+   "cycle": 1,
+   "start_hit": 1,
+   "arms": {
+    "topk": {
+     "final_cost": 79900.546875,
+     "wall_s": 49.22508945316076,
+     "time_s": {
+      "A_screen": 5.003774903714657,
+      "B_select": 6.698071956634521e-05,
+      "C_refine": 44.20154591649771
+     },
+     "best_start": 1,
+     "starts": [
+      {
+       "start": 153,
+       "screen_cost": 86650.9453125,
+       "initial_cost": 86650.9453125,
+       "final_cost": 81735.609375,
+       "nit": 68,
+       "nfev": 183,
+       "message": "Optimization terminated successfully",
+       "time_s": 15.018290929496288,
+       "start_grad_norm": 17695.424115343918,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      },
+      {
+       "start": 26,
+       "screen_cost": 86688.125,
+       "initial_cost": 86688.1328125,
+       "final_cost": 79900.546875,
+       "nit": 60,
+       "nfev": 122,
+       "message": "Optimization terminated successfully",
+       "time_s": 9.891270644962788,
+       "start_grad_norm": 14322.010527045477,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      },
+      {
+       "start": 70,
+       "screen_cost": 86837.5703125,
+       "initial_cost": 86837.5703125,
+       "final_cost": 83272.1484375,
+       "nit": 18,
+       "nfev": 40,
+       "message": "Optimization terminated successfully",
+       "time_s": 3.270053304731846,
+       "start_grad_norm": 16746.35875878381,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      },
+      {
+       "start": 92,
+       "screen_cost": 86985.7109375,
+       "initial_cost": 86985.7109375,
+       "final_cost": 83093.2890625,
+       "nit": 24,
+       "nfev": 72,
+       "message": "Optimization terminated successfully",
+       "time_s": 5.951129198074341,
+       "start_grad_norm": 22157.527111591193,
+       "start_grad_finite": true,
+       "n_at_bound": 0
+      },
+      {
+       "start": 19,
+       "screen_cost": 87347.6328125,
+       "initial_cost": 87347.6328125,
+       "final_cost": 84850.4375,
+       "nit": 23,
+       "nfev": 118,
+       "message": "Optimization terminated successfully",
+       "time_s": 9.641810901463032,
+       "start_grad_norm": 32068.68260059466,
+       "start_grad_finite": true,
+       "n_at_bound": 0
+      }
+     ],
+     "plan": [
+      [
+       31.651537955491232,
+       173.57151180189575,
+       1.5586181141724356
+      ],
+      [
+       57.1034698953157,
+       94.47831845804986,
+       1.4762614622131935
+      ],
+      [
+       32.00665059077684,
+       90.81858322459343,
+       2.0
+      ],
+      [
+       73.32721798358892,
+       95.44131579485338,
+       1.2338726100606756
+      ],
+      [
+       65.24356015313927,
+       176.36592835706378,
+       2.0
+      ],
+      [
+       49.279041767369065,
+       24.43373568375178,
+       0.7575161401887819
+      ]
+     ]
+    },
+    "random": {
+     "final_cost": 81349.2890625,
+     "wall_s": 36.390857204794884,
+     "time_s": {
+      "A_screen": 0.0,
+      "B_select": 0.0,
+      "C_refine": 36.37771800905466
+     },
+     "best_start": 2,
+     "starts": [
+      {
+       "start": 0,
+       "screen_cost": null,
+       "initial_cost": 91773.3125,
+       "final_cost": 86352.71875,
+       "nit": 24,
+       "nfev": 71,
+       "message": "Optimization terminated successfully",
+       "time_s": 5.84660267829895,
+       "start_grad_norm": 26278.451551623042,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      },
+      {
+       "start": 1,
+       "screen_cost": null,
+       "initial_cost": 88520.53125,
+       "final_cost": 84109.6015625,
+       "nit": 9,
+       "nfev": 42,
+       "message": "Optimization terminated successfully",
+       "time_s": 3.399689994752407,
+       "start_grad_norm": 17828.047328412264,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      },
+      {
+       "start": 2,
+       "screen_cost": null,
+       "initial_cost": 91134.4453125,
+       "final_cost": 81349.2890625,
+       "nit": 35,
+       "nfev": 96,
+       "message": "Optimization terminated successfully",
+       "time_s": 7.979813136160374,
+       "start_grad_norm": 18341.444634029212,
+       "start_grad_finite": true,
+       "n_at_bound": 0
+      },
+      {
+       "start": 3,
+       "screen_cost": null,
+       "initial_cost": 89602.0234375,
+       "final_cost": 82791.9453125,
+       "nit": 46,
+       "nfev": 108,
+       "message": "Optimization terminated successfully",
+       "time_s": 8.903635799884796,
+       "start_grad_norm": 30962.2860028848,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      },
+      {
+       "start": 4,
+       "screen_cost": null,
+       "initial_cost": 90931.5,
+       "final_cost": 83931.5546875,
+       "nit": 51,
+       "nfev": 120,
+       "message": "Optimization terminated successfully",
+       "time_s": 9.825623400509357,
+       "start_grad_norm": 20469.89382853337,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      }
+     ],
+     "plan": [
+      [
+       38.957469822602185,
+       95.44816342827386,
+       0.5064898990093175
+      ],
+      [
+       70.07632799401998,
+       96.41144995247677,
+       1.2374115092633016
+      ],
+      [
+       39.786028868728025,
+       96.11336587177544,
+       1.8103409402838502
+      ],
+      [
+       40.49066781244866,
+       177.91548962358092,
+       1.776521687140066
+      ],
+      [
+       57.3010981784456,
+       86.77541777816897,
+       1.8191436402908758
+      ],
+      [
+       64.49412273033326,
+       161.61852908753903,
+       1.1896780477780728
+      ]
+     ]
+    },
+    "default": {
+     "final_cost": 77228.2578125,
+     "wall_s": 4.966443777084351,
+     "time_s": {
+      "A_screen": 0.0,
+      "B_select": 0.0,
+      "C_refine": 4.9464788138866425
+     },
+     "best_start": 0,
+     "starts": [
+      {
+       "start": null,
+       "screen_cost": null,
+       "initial_cost": 82071.171875,
+       "final_cost": 77228.2578125,
+       "nit": 32,
+       "nfev": 59,
+       "message": "Optimization terminated successfully",
+       "time_s": 4.860472209751606,
+       "start_grad_norm": 23652.98327807374,
+       "start_grad_finite": true,
+       "n_at_bound": 4
+      }
+     ],
+     "plan": [
+      [
+       31.592569838989064,
+       1.030872868113151,
+       1.7436861200602283
+      ],
+      [
+       31.583333333333336,
+       90.52784814305129,
+       2.0
+      ],
+      [
+       47.27374738131327,
+       2.3782270107802908,
+       1.7965663480178917
+      ],
+      [
+       47.26551064337008,
+       92.57187000496842,
+       2.0
+      ],
+      [
+       65.05395532862391,
+       8.638299742047659,
+       1.6659920131254917
+      ],
+      [
+       64.7626018833837,
+       94.88768776834895,
+       2.0
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "state": "cycle 3 (before hit 13)",
+   "cycle": 3,
+   "start_hit": 13,
+   "arms": {
+    "topk": {
+     "final_cost": 49619.94140625,
+     "wall_s": 42.47949822247028,
+     "time_s": {
+      "A_screen": 5.840105451643467,
+      "B_select": 7.883459329605103e-05,
+      "C_refine": 36.62950339913368
+     },
+     "best_start": 1,
+     "starts": [
+      {
+       "start": 119,
+       "screen_cost": 56330.25,
+       "initial_cost": 56330.25,
+       "final_cost": 49884.57421875,
+       "nit": 40,
+       "nfev": 65,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.137966871261597,
+       "start_grad_norm": 28606.803336343277,
+       "start_grad_finite": true,
+       "n_at_bound": 6
+      },
+      {
+       "start": 158,
+       "screen_cost": 57318.0390625,
+       "initial_cost": 57318.03515625,
+       "final_cost": 49619.94140625,
+       "nit": 35,
+       "nfev": 65,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.1450822949409485,
+       "start_grad_norm": 28758.766945052703,
+       "start_grad_finite": true,
+       "n_at_bound": 6
+      },
+      {
+       "start": 185,
+       "screen_cost": 57452.90234375,
+       "initial_cost": 57452.90234375,
+       "final_cost": 52569.20703125,
+       "nit": 20,
+       "nfev": 69,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.496397957205772,
+       "start_grad_norm": 16141.766727516791,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      },
+      {
+       "start": 86,
+       "screen_cost": 57658.89453125,
+       "initial_cost": 57658.890625,
+       "final_cost": 50911.9921875,
+       "nit": 53,
+       "nfev": 108,
+       "message": "Optimization terminated successfully",
+       "time_s": 10.308474510908127,
+       "start_grad_norm": 42316.986653383006,
+       "start_grad_finite": true,
+       "n_at_bound": 4
+      },
+      {
+       "start": 45,
+       "screen_cost": 57817.3046875,
+       "initial_cost": 57817.30859375,
+       "final_cost": 51287.05859375,
+       "nit": 44,
+       "nfev": 74,
+       "message": "Optimization terminated successfully",
+       "time_s": 7.055353380739689,
+       "start_grad_norm": 21006.194661628822,
+       "start_grad_finite": true,
+       "n_at_bound": 8
+      }
+     ],
+     "plan": [
+      [
+       96.26005401611326,
+       174.61928641562372,
+       1.9999999999999998
+      ],
+      [
+       96.26005401611329,
+       102.68559297297035,
+       1.9999999999999998
+      ],
+      [
+       34.80520940209952,
+       1.2050937179786205,
+       1.2803230326784356
+      ],
+      [
+       77.96752505614529,
+       179.33114940172658,
+       1.9999999999999998
+      ],
+      [
+       76.17564214823491,
+       92.94970857036112,
+       2.0
+      ],
+      [
+       55.16125252590543,
+       91.69030441953981,
+       1.50857323087904
+      ]
+     ]
+    },
+    "random": {
+     "final_cost": 49671.7578125,
+     "wall_s": 39.12744814157486,
+     "time_s": {
+      "A_screen": 0.0,
+      "B_select": 0.0,
+      "C_refine": 39.115694388747215
+     },
+     "best_start": 0,
+     "starts": [
+      {
+       "start": 0,
+       "screen_cost": null,
+       "initial_cost": 61672.9609375,
+       "final_cost": 49671.7578125,
+       "nit": 58,
+       "nfev": 117,
+       "message": "Optimization terminated successfully",
+       "time_s": 11.230908691883087,
+       "start_grad_norm": 19469.17609104171,
+       "start_grad_finite": true,
+       "n_at_bound": 3
+      },
+      {
+       "start": 1,
+       "screen_cost": null,
+       "initial_cost": 60645.92578125,
+       "final_cost": 54876.609375,
+       "nit": 17,
+       "nfev": 70,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.55438406765461,
+       "start_grad_norm": 14793.438740928268,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      },
+      {
+       "start": 2,
+       "screen_cost": null,
+       "initial_cost": 62160.13671875,
+       "final_cost": 52591.62109375,
+       "nit": 52,
+       "nfev": 94,
+       "message": "Optimization terminated successfully",
+       "time_s": 8.780275896191597,
+       "start_grad_norm": 12194.036615320703,
+       "start_grad_finite": true,
+       "n_at_bound": 4
+      },
+      {
+       "start": 3,
+       "screen_cost": null,
+       "initial_cost": 62314.0,
+       "final_cost": 53341.4609375,
+       "nit": 32,
+       "nfev": 67,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.262436971068382,
+       "start_grad_norm": 16725.430102760212,
+       "start_grad_finite": true,
+       "n_at_bound": 6
+      },
+      {
+       "start": 4,
+       "screen_cost": null,
+       "initial_cost": 59593.359375,
+       "final_cost": 53172.50390625,
+       "nit": 32,
+       "nfev": 62,
+       "message": "Optimization terminated successfully",
+       "time_s": 5.811776675283909,
+       "start_grad_norm": 28716.57898654007,
+       "start_grad_finite": true,
+       "n_at_bound": 4
+      }
+     ],
+     "plan": [
+      [
+       96.26005401611326,
+       169.83622991292918,
+       1.9999999993129258
+      ],
+      [
+       77.16086177081367,
+       96.50354988765305,
+       1.6461825663608378
+      ],
+      [
+       58.85435324532337,
+       91.36467756857141,
+       1.9933832373330507
+      ],
+      [
+       60.61966900531475,
+       179.23487375389564,
+       1.9999529638463431
+      ],
+      [
+       80.19524231810297,
+       6.7748496468746024,
+       2.0
+      ],
+      [
+       77.59849071265444,
+       93.14250525939978,
+       1.305911620910047
+      ]
+     ]
+    },
+    "default": {
+     "final_cost": 51480.2421875,
+     "wall_s": 8.920724734663963,
+     "time_s": {
+      "A_screen": 0.0,
+      "B_select": 0.0,
+      "C_refine": 8.889561027288437
+     },
+     "best_start": 0,
+     "starts": [
+      {
+       "start": null,
+       "screen_cost": null,
+       "initial_cost": 54384.921875,
+       "final_cost": 51480.2421875,
+       "nit": 46,
+       "nfev": 93,
+       "message": "Optimization terminated successfully",
+       "time_s": 8.791748993098736,
+       "start_grad_norm": 23648.206244766905,
+       "start_grad_finite": true,
+       "n_at_bound": 4
+      }
+     ],
+     "plan": [
+      [
+       31.73781356645107,
+       1.3555768309979244,
+       1.6022458027211286
+      ],
+      [
+       31.583333333333343,
+       92.17053541975736,
+       2.0
+      ],
+      [
+       49.72220919059484,
+       4.2312596971813035,
+       1.8731447136203079
+      ],
+      [
+       49.65965171716052,
+       93.1203940520264,
+       1.9999999999999998
+      ],
+      [
+       64.18907038542437,
+       1.8677882829038006,
+       1.5354381331492617
+      ],
+      [
+       65.85102205260736,
+       93.58327879109524,
+       2.0
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "state": "cycle 5 (before hit 23)",
+   "cycle": 5,
+   "start_hit": 23,
+   "arms": {
+    "topk": {
+     "final_cost": 35335.41015625,
+     "wall_s": 44.362684927880764,
+     "time_s": {
+      "A_screen": 5.8402663096785545,
+      "B_select": 7.469207048416138e-05,
+      "C_refine": 38.510653384029865
+     },
+     "best_start": 0,
+     "starts": [
+      {
+       "start": 39,
+       "screen_cost": 41399.2265625,
+       "initial_cost": 41399.2265625,
+       "final_cost": 35335.41015625,
+       "nit": 35,
+       "nfev": 84,
+       "message": "Optimization terminated successfully",
+       "time_s": 7.827404022216797,
+       "start_grad_norm": 18901.429540364697,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      },
+      {
+       "start": 27,
+       "screen_cost": 41884.04296875,
+       "initial_cost": 41884.046875,
+       "final_cost": 35859.20703125,
+       "nit": 23,
+       "nfev": 60,
+       "message": "Optimization terminated successfully",
+       "time_s": 5.64516568928957,
+       "start_grad_norm": 20183.392385639567,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      },
+      {
+       "start": 125,
+       "screen_cost": 42184.1171875,
+       "initial_cost": 42184.1171875,
+       "final_cost": 37368.80859375,
+       "nit": 29,
+       "nfev": 99,
+       "message": "Optimization terminated successfully",
+       "time_s": 9.311039201915264,
+       "start_grad_norm": 23378.306734571906,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      },
+      {
+       "start": 10,
+       "screen_cost": 42488.71484375,
+       "initial_cost": 42488.71484375,
+       "final_cost": 39474.35546875,
+       "nit": 24,
+       "nfev": 70,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.5991505309939384,
+       "start_grad_norm": 22229.689683781922,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      },
+      {
+       "start": 92,
+       "screen_cost": 42713.30859375,
+       "initial_cost": 42713.30859375,
+       "final_cost": 36428.7734375,
+       "nit": 51,
+       "nfev": 92,
+       "message": "Optimization terminated successfully",
+       "time_s": 8.654912136495113,
+       "start_grad_norm": 12323.589847297317,
+       "start_grad_finite": true,
+       "n_at_bound": 5
+      }
+     ],
+     "plan": [
+      [
+       103.82930055276748,
+       91.01487096007563,
+       1.7194422427958274
+      ],
+      [
+       103.27498185492863,
+       178.80044717026362,
+       1.999999999999991
+      ],
+      [
+       72.54769339573966,
+       89.97753140893566,
+       1.8695112817203732
+      ],
+      [
+       73.66621066451235,
+       3.4190612273892316,
+       1.9999999999999745
+      ],
+      [
+       88.77378450551436,
+       1.0500781168086346,
+       0.9254455521925846
+      ],
+      [
+       49.32984843758871,
+       2.4198916102329284,
+       0.7263544823918153
+      ]
+     ]
+    },
+    "random": {
+     "final_cost": 37879.796875,
+     "wall_s": 38.83166314661503,
+     "time_s": {
+      "A_screen": 0.0,
+      "B_select": 0.0,
+      "C_refine": 38.825214579701424
+     },
+     "best_start": 3,
+     "starts": [
+      {
+       "start": 0,
+       "screen_cost": null,
+       "initial_cost": 44215.4296875,
+       "final_cost": 38055.19140625,
+       "nit": 33,
+       "nfev": 54,
+       "message": "Optimization terminated successfully",
+       "time_s": 5.20987194031477,
+       "start_grad_norm": 15966.074493395623,
+       "start_grad_finite": true,
+       "n_at_bound": 6
+      },
+      {
+       "start": 1,
+       "screen_cost": null,
+       "initial_cost": 45413.81640625,
+       "final_cost": 39885.84375,
+       "nit": 37,
+       "nfev": 53,
+       "message": "Optimization terminated successfully",
+       "time_s": 5.059182092547417,
+       "start_grad_norm": 20546.608535565672,
+       "start_grad_finite": true,
+       "n_at_bound": 9
+      },
+      {
+       "start": 2,
+       "screen_cost": null,
+       "initial_cost": 44584.6953125,
+       "final_cost": 38462.80859375,
+       "nit": 54,
+       "nfev": 94,
+       "message": "Optimization terminated successfully",
+       "time_s": 8.959629714488983,
+       "start_grad_norm": 17085.046480775163,
+       "start_grad_finite": true,
+       "n_at_bound": 3
+      },
+      {
+       "start": 3,
+       "screen_cost": null,
+       "initial_cost": 45143.1015625,
+       "final_cost": 37879.796875,
+       "nit": 41,
+       "nfev": 95,
+       "message": "Optimization terminated successfully",
+       "time_s": 9.007058374583721,
+       "start_grad_norm": 17956.948164570662,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      },
+      {
+       "start": 4,
+       "screen_cost": null,
+       "initial_cost": 47645.77734375,
+       "final_cost": 39070.140625,
+       "nit": 45,
+       "nfev": 106,
+       "message": "Optimization terminated successfully",
+       "time_s": 10.115997284650803,
+       "start_grad_norm": 15597.727730929138,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      }
+     ],
+     "plan": [
+      [
+       75.69093172409856,
+       1.6705496051439956,
+       1.9999999999999996
+      ],
+      [
+       77.13140222210177,
+       93.74377044212535,
+       1.9999993158039344
+      ],
+      [
+       95.16824327873735,
+       91.89949642759764,
+       1.50203623373237
+      ],
+      [
+       64.30942407083285,
+       90.18670766156045,
+       1.2347637962116245
+      ],
+      [
+       103.82945861816407,
+       92.31246593072754,
+       1.2833260579689094
+      ],
+      [
+       39.054690189036585,
+       2.3413782695389385,
+       0.7869610717329703
+      ]
+     ]
+    },
+    "default": {
+     "final_cost": 40431.0234375,
+     "wall_s": 5.363831475377083,
+     "time_s": {
+      "A_screen": 0.0,
+      "B_select": 0.0,
+      "C_refine": 5.340682975947857
+     },
+     "best_start": 0,
+     "starts": [
+      {
+       "start": null,
+       "screen_cost": null,
+       "initial_cost": 42042.57421875,
+       "final_cost": 40431.0234375,
+       "nit": 15,
+       "nfev": 55,
+       "message": "Optimization terminated successfully",
+       "time_s": 5.242499798536301,
+       "start_grad_norm": 13880.130846910513,
+       "start_grad_finite": true,
+       "n_at_bound": 0
+      }
+     ],
+     "plan": [
+      [
+       32.48307089674383,
+       2.535896352176976,
+       1.607653900315737
+      ],
+      [
+       31.70680793881341,
+       92.66308764089219,
+       1.9681443078649694
+      ],
+      [
+       58.10911743229947,
+       2.6461543787306856,
+       1.5028323408617945
+      ],
+      [
+       56.81964137149493,
+       92.71145408716134,
+       1.631602519717565
+      ],
+      [
+       53.3503668222679,
+       1.2199862152959786,
+       1.4688032102920479
+      ],
+      [
+       73.9325442443527,
+       90.34749629707822,
+       1.582673921846762
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "state": "cycle 7 (before hit 35)",
+   "cycle": 7,
+   "start_hit": 35,
+   "arms": {
+    "topk": {
+     "final_cost": 23448.1953125,
+     "wall_s": 51.917631804943085,
+     "time_s": {
+      "A_screen": 5.839822202920914,
+      "B_select": 7.758289575576782e-05,
+      "C_refine": 46.068383783102036
+     },
+     "best_start": 1,
+     "starts": [
+      {
+       "start": 118,
+       "screen_cost": 27308.4296875,
+       "initial_cost": 27308.42578125,
+       "final_cost": 24865.755859375,
+       "nit": 45,
+       "nfev": 133,
+       "message": "Optimization terminated successfully",
+       "time_s": 12.56357042491436,
+       "start_grad_norm": 21445.262382874876,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      },
+      {
+       "start": 104,
+       "screen_cost": 27586.5546875,
+       "initial_cost": 27586.5546875,
+       "final_cost": 23448.1953125,
+       "nit": 43,
+       "nfev": 121,
+       "message": "Optimization terminated successfully",
+       "time_s": 11.521940305829048,
+       "start_grad_norm": 12398.117298425845,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      },
+      {
+       "start": 95,
+       "screen_cost": 27623.37109375,
+       "initial_cost": 27623.37109375,
+       "final_cost": 24648.71875,
+       "nit": 29,
+       "nfev": 67,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.282891742885113,
+       "start_grad_norm": 12360.628466331307,
+       "start_grad_finite": true,
+       "n_at_bound": 5
+      },
+      {
+       "start": 5,
+       "screen_cost": 27743.294921875,
+       "initial_cost": 27743.29296875,
+       "final_cost": 24534.833984375,
+       "nit": 48,
+       "nfev": 88,
+       "message": "Optimization terminated successfully",
+       "time_s": 8.288391314446926,
+       "start_grad_norm": 17585.787839266355,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      },
+      {
+       "start": 157,
+       "screen_cost": 27798.314453125,
+       "initial_cost": 27798.314453125,
+       "final_cost": 24426.2109375,
+       "nit": 37,
+       "nfev": 75,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.9259843453764915,
+       "start_grad_norm": 10832.6773611283,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      }
+     ],
+     "plan": [
+      [
+       113.62130049032243,
+       91.64140732473041,
+       1.372207314016053
+      ],
+      [
+       95.19738206388824,
+       90.77469505167761,
+       1.3826009835542383
+      ],
+      [
+       114.19377745528828,
+       179.5821246322401,
+       1.982652774574059
+      ],
+      [
+       113.83231704854964,
+       92.92868465292689,
+       1.0902330188294087
+      ],
+      [
+       92.38858160137119,
+       179.82958625507462,
+       1.2373422616923877
+      ],
+      [
+       109.45074564737155,
+       178.92305545287954,
+       0.9843588982915685
+      ]
+     ]
+    },
+    "random": {
+     "final_cost": 23732.841796875,
+     "wall_s": 41.66449620574713,
+     "time_s": {
+      "A_screen": 0.0,
+      "B_select": 0.0,
+      "C_refine": 41.656697146594524
+     },
+     "best_start": 1,
+     "starts": [
+      {
+       "start": 0,
+       "screen_cost": null,
+       "initial_cost": 31681.92578125,
+       "final_cost": 24026.787109375,
+       "nit": 34,
+       "nfev": 75,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.530091717839241,
+       "start_grad_norm": 15217.008405186234,
+       "start_grad_finite": true,
+       "n_at_bound": 4
+      },
+      {
+       "start": 1,
+       "screen_cost": null,
+       "initial_cost": 29734.298828125,
+       "final_cost": 23732.841796875,
+       "nit": 34,
+       "nfev": 96,
+       "message": "Optimization terminated successfully",
+       "time_s": 8.722951471805573,
+       "start_grad_norm": 7392.6342419764305,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      },
+      {
+       "start": 2,
+       "screen_cost": null,
+       "initial_cost": 29480.9140625,
+       "final_cost": 24829.845703125,
+       "nit": 18,
+       "nfev": 57,
+       "message": "Optimization terminated successfully",
+       "time_s": 5.494834378361702,
+       "start_grad_norm": 18129.522098489888,
+       "start_grad_finite": true,
+       "n_at_bound": 0
+      },
+      {
+       "start": 3,
+       "screen_cost": null,
+       "initial_cost": 31417.97265625,
+       "final_cost": 26469.98046875,
+       "nit": 39,
+       "nfev": 84,
+       "message": "Optimization terminated successfully",
+       "time_s": 8.837346605956554,
+       "start_grad_norm": 7669.111394718752,
+       "start_grad_finite": true,
+       "n_at_bound": 4
+      },
+      {
+       "start": 4,
+       "screen_cost": null,
+       "initial_cost": 29718.23046875,
+       "final_cost": 25015.4296875,
+       "nit": 53,
+       "nfev": 122,
+       "message": "Optimization terminated successfully",
+       "time_s": 11.58158852905035,
+       "start_grad_norm": 14007.080673608205,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      }
+     ],
+     "plan": [
+      [
+       113.61327733250386,
+       92.2413248368779,
+       1.5333086208474476
+      ],
+      [
+       114.19232535112775,
+       180.0,
+       1.9999291906921886
+      ],
+      [
+       68.977107172968,
+       1.3691485234254217,
+       0.5522229265975893
+      ],
+      [
+       55.815843831177915,
+       179.99482564441237,
+       0.9472528820168392
+      ],
+      [
+       90.42756092382083,
+       179.9981014503323,
+       1.136634771797755
+      ],
+      [
+       93.52936103797867,
+       92.34356616710552,
+       1.2452615865843777
+      ]
+     ]
+    },
+    "default": {
+     "final_cost": 24041.779296875,
+     "wall_s": 5.550636477768421,
+     "time_s": {
+      "A_screen": 0.0,
+      "B_select": 0.0,
+      "C_refine": 5.523451112210751
+     },
+     "best_start": 0,
+     "starts": [
+      {
+       "start": null,
+       "screen_cost": null,
+       "initial_cost": 27901.689453125,
+       "final_cost": 24041.779296875,
+       "nit": 29,
+       "nfev": 58,
+       "message": "Optimization terminated successfully",
+       "time_s": 5.433470018208027,
+       "start_grad_norm": 15878.008386330395,
+       "start_grad_finite": true,
+       "n_at_bound": 5
+      }
+     ],
+     "plan": [
+      [
+       31.583333333333393,
+       4.698445583143053e-14,
+       1.5387599613370277
+      ],
+      [
+       31.583333333333425,
+       90.86299893008655,
+       1.9999999999999998
+      ],
+      [
+       51.55257187163344,
+       4.295633918969873,
+       1.9999999999999984
+      ],
+      [
+       51.693545337669676,
+       95.10922722101884,
+       1.8257735525426886
+      ],
+      [
+       72.13604540218299,
+       1.5133688444363727,
+       1.2810868591761235
+      ],
+      [
+       72.30796334315772,
+       98.1829762393908,
+       1.617435086842597
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "state": "cycle 9 (before hit 47)",
+   "cycle": 9,
+   "start_hit": 47,
+   "arms": {
+    "topk": {
+     "final_cost": 19287.931640625,
+     "wall_s": 48.78573093563318,
+     "time_s": {
+      "A_screen": 5.840813733637333,
+      "B_select": 8.427351713180542e-05,
+      "C_refine": 42.9368888810277
+     },
+     "best_start": 2,
+     "starts": [
+      {
+       "start": 118,
+       "screen_cost": 22499.087890625,
+       "initial_cost": 22499.087890625,
+       "final_cost": 19574.23828125,
+       "nit": 17,
+       "nfev": 51,
+       "message": "Optimization terminated successfully",
+       "time_s": 4.541132390499115,
+       "start_grad_norm": 20165.87357281291,
+       "start_grad_finite": true,
+       "n_at_bound": 4
+      },
+      {
+       "start": 59,
+       "screen_cost": 22818.177734375,
+       "initial_cost": 22818.177734375,
+       "final_cost": 20893.111328125,
+       "nit": 29,
+       "nfev": 86,
+       "message": "Optimization terminated successfully",
+       "time_s": 8.021121360361576,
+       "start_grad_norm": 10622.349495091647,
+       "start_grad_finite": true,
+       "n_at_bound": 0
+      },
+      {
+       "start": 158,
+       "screen_cost": 23020.9453125,
+       "initial_cost": 23020.9453125,
+       "final_cost": 19287.931640625,
+       "nit": 59,
+       "nfev": 99,
+       "message": "Optimization terminated successfully",
+       "time_s": 9.39952602982521,
+       "start_grad_norm": 13293.6268218336,
+       "start_grad_finite": true,
+       "n_at_bound": 4
+      },
+      {
+       "start": 97,
+       "screen_cost": 23031.09765625,
+       "initial_cost": 23031.09765625,
+       "final_cost": 19504.556640625,
+       "nit": 35,
+       "nfev": 102,
+       "message": "Optimization terminated successfully",
+       "time_s": 9.632327102124691,
+       "start_grad_norm": 12301.371017805275,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      },
+      {
+       "start": 141,
+       "screen_cost": 23177.978515625,
+       "initial_cost": 23177.978515625,
+       "final_cost": 19804.7109375,
+       "nit": 42,
+       "nfev": 118,
+       "message": "Optimization terminated successfully",
+       "time_s": 10.874015420675278,
+       "start_grad_norm": 22027.092900898202,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      }
+     ],
+     "plan": [
+      [
+       122.54508056640626,
+       90.09007802492494,
+       1.4169799477417597
+      ],
+      [
+       102.84231505504818,
+       93.52330380533742,
+       1.2706621854328566
+      ],
+      [
+       37.36704336996412,
+       180.0,
+       1.7935302561251483
+      ],
+      [
+       35.593302730339346,
+       89.4740150538934,
+       1.499633877064182
+      ],
+      [
+       100.50855305418324,
+       3.647077035280234,
+       1.1232669483621536
+      ],
+      [
+       122.54508056640626,
+       1.8290562867497476e-15,
+       1.3986173407632738
+      ]
+     ]
+    },
+    "random": {
+     "final_cost": 18988.931640625,
+     "wall_s": 29.10945889353752,
+     "time_s": {
+      "A_screen": 0.0,
+      "B_select": 0.0,
+      "C_refine": 29.102933950722218
+     },
+     "best_start": 3,
+     "starts": [
+      {
+       "start": 0,
+       "screen_cost": null,
+       "initial_cost": 24879.7890625,
+       "final_cost": 20698.10546875,
+       "nit": 37,
+       "nfev": 83,
+       "message": "Optimization terminated successfully",
+       "time_s": 7.627698548138142,
+       "start_grad_norm": 7768.750418208697,
+       "start_grad_finite": true,
+       "n_at_bound": 4
+      },
+      {
+       "start": 1,
+       "screen_cost": null,
+       "initial_cost": 25659.38671875,
+       "final_cost": 20264.560546875,
+       "nit": 23,
+       "nfev": 59,
+       "message": "Optimization terminated successfully",
+       "time_s": 5.429126672446728,
+       "start_grad_norm": 15368.738349971238,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      },
+      {
+       "start": 2,
+       "screen_cost": null,
+       "initial_cost": 26676.548828125,
+       "final_cost": 20368.24609375,
+       "nit": 33,
+       "nfev": 57,
+       "message": "Optimization terminated successfully",
+       "time_s": 5.336361072957516,
+       "start_grad_norm": 8794.544790450287,
+       "start_grad_finite": true,
+       "n_at_bound": 6
+      },
+      {
+       "start": 3,
+       "screen_cost": null,
+       "initial_cost": 27277.232421875,
+       "final_cost": 18988.931640625,
+       "nit": 28,
+       "nfev": 43,
+       "message": "Optimization terminated successfully",
+       "time_s": 4.012440457940102,
+       "start_grad_norm": 4991.741296086013,
+       "start_grad_finite": true,
+       "n_at_bound": 6
+      },
+      {
+       "start": 4,
+       "screen_cost": null,
+       "initial_cost": 24578.58984375,
+       "final_cost": 20019.33984375,
+       "nit": 21,
+       "nfev": 65,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.220882169902325,
+       "start_grad_norm": 9695.505829110138,
+       "start_grad_finite": true,
+       "n_at_bound": 4
+      }
+     ],
+     "plan": [
+      [
+       122.54508056640589,
+       2.889388716532931,
+       1.999999999999047
+      ],
+      [
+       31.583333333336025,
+       0.27563005610369107,
+       1.361508294716701
+      ],
+      [
+       122.545080566405,
+       92.94170952551812,
+       1.7910696734592606
+      ],
+      [
+       31.58333333333892,
+       93.023745690263,
+       1.9321572824496005
+      ],
+      [
+       31.583333333356762,
+       0.7735082118414639,
+       1.03279539046799
+      ],
+      [
+       100.02679218045452,
+       1.3575336315668456,
+       0.7276799198654919
+      ]
+     ]
+    },
+    "default": {
+     "final_cost": 20792.505859375,
+     "wall_s": 9.508242279291153,
+     "time_s": {
+      "A_screen": 0.0,
+      "B_select": 0.0,
+      "C_refine": 9.49340569972992
+     },
+     "best_start": 0,
+     "starts": [
+      {
+       "start": null,
+       "screen_cost": null,
+       "initial_cost": 22075.994140625,
+       "final_cost": 20792.505859375,
+       "nit": 42,
+       "nfev": 98,
+       "message": "Optimization terminated successfully",
+       "time_s": 9.39649023115635,
+       "start_grad_norm": 12160.684512715156,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      }
+     ],
+     "plan": [
+      [
+       93.33329282160611,
+       1.4698025705651756,
+       1.2612793584190891
+      ],
+      [
+       101.34698182020176,
+       93.8974439634784,
+       1.8369889432539295
+      ],
+      [
+       110.04899905075271,
+       7.651120024719052,
+       1.518986481673189
+      ],
+      [
+       121.21602730701974,
+       89.908755821742,
+       1.5535050632257335
+      ],
+      [
+       122.54508056640626,
+       1.2382985598703042,
+       1.6125973283238069
+      ],
+      [
+       122.54508056640626,
+       86.02426087009901,
+       1.2750080409558353
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "state": "cycle 12 (before hit 62)",
+   "cycle": 12,
+   "start_hit": 62,
+   "arms": {
+    "topk": {
+     "final_cost": 13332.9951171875,
+     "wall_s": 51.54847651720047,
+     "time_s": {
+      "A_screen": 5.841090515255928,
+      "B_select": 7.15404748916626e-05,
+      "C_refine": 45.69956085830927
+     },
+     "best_start": 2,
+     "starts": [
+      {
+       "start": 199,
+       "screen_cost": 14703.25390625,
+       "initial_cost": 14703.2548828125,
+       "final_cost": 13525.0087890625,
+       "nit": 22,
+       "nfev": 62,
+       "message": "Optimization terminated successfully",
+       "time_s": 5.768471620976925,
+       "start_grad_norm": 7370.69622018918,
+       "start_grad_finite": true,
+       "n_at_bound": 0
+      },
+      {
+       "start": 86,
+       "screen_cost": 15130.890625,
+       "initial_cost": 15130.8916015625,
+       "final_cost": 13589.828125,
+       "nit": 31,
+       "nfev": 112,
+       "message": "Optimization terminated successfully",
+       "time_s": 10.518407583236694,
+       "start_grad_norm": 5443.054781087827,
+       "start_grad_finite": true,
+       "n_at_bound": 0
+      },
+      {
+       "start": 83,
+       "screen_cost": 15377.923828125,
+       "initial_cost": 15377.923828125,
+       "final_cost": 13332.9951171875,
+       "nit": 41,
+       "nfev": 138,
+       "message": "Optimization terminated successfully",
+       "time_s": 13.099014766514301,
+       "start_grad_norm": 8202.831958979477,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      },
+      {
+       "start": 59,
+       "screen_cost": 15466.544921875,
+       "initial_cost": 15466.544921875,
+       "final_cost": 13343.4296875,
+       "nit": 42,
+       "nfev": 86,
+       "message": "Optimization terminated successfully",
+       "time_s": 8.100101344287395,
+       "start_grad_norm": 8145.847798006216,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      },
+      {
+       "start": 71,
+       "screen_cost": 15516.291015625,
+       "initial_cost": 15516.2900390625,
+       "final_cost": 13662.6748046875,
+       "nit": 47,
+       "nfev": 82,
+       "message": "Optimization terminated successfully",
+       "time_s": 7.733185313642025,
+       "start_grad_norm": 8004.686113719432,
+       "start_grad_finite": true,
+       "n_at_bound": 3
+      }
+     ],
+     "plan": [
+      [
+       128.75638442415206,
+       180.0,
+       1.6773061533523554
+      ],
+      [
+       131.6696838378906,
+       92.44886202215433,
+       1.5493183268289785
+      ],
+      [
+       115.94142105814214,
+       88.65321590705885,
+       0.5081337908772
+      ],
+      [
+       102.54064309821044,
+       179.68941165032624,
+       1.0598046906905019
+      ],
+      [
+       124.30577348953668,
+       0.0103325890829701,
+       1.171372314193425
+      ],
+      [
+       115.61695455886351,
+       179.9168544212816,
+       0.5052764406588897
+      ]
+     ]
+    },
+    "random": {
+     "final_cost": 13278.908203125,
+     "wall_s": 37.89357253909111,
+     "time_s": {
+      "A_screen": 0.0,
+      "B_select": 0.0,
+      "C_refine": 37.87921992689371
+     },
+     "best_start": 4,
+     "starts": [
+      {
+       "start": 0,
+       "screen_cost": null,
+       "initial_cost": 17061.271484375,
+       "final_cost": 14703.19140625,
+       "nit": 41,
+       "nfev": 73,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.8396320566535,
+       "start_grad_norm": 9790.495750742843,
+       "start_grad_finite": true,
+       "n_at_bound": 5
+      },
+      {
+       "start": 1,
+       "screen_cost": null,
+       "initial_cost": 17384.46875,
+       "final_cost": 13872.3017578125,
+       "nit": 24,
+       "nfev": 67,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.354691848158836,
+       "start_grad_norm": 19865.0812327685,
+       "start_grad_finite": true,
+       "n_at_bound": 1
+      },
+      {
+       "start": 2,
+       "screen_cost": null,
+       "initial_cost": 17480.1328125,
+       "final_cost": 13521.61328125,
+       "nit": 32,
+       "nfev": 72,
+       "message": "Optimization terminated successfully",
+       "time_s": 6.73748441785574,
+       "start_grad_norm": 11988.338798162522,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      },
+      {
+       "start": 3,
+       "screen_cost": null,
+       "initial_cost": 18522.0234375,
+       "final_cost": 13651.958984375,
+       "nit": 25,
+       "nfev": 76,
+       "message": "Optimization terminated successfully",
+       "time_s": 7.081876680254936,
+       "start_grad_norm": 24294.916495058846,
+       "start_grad_finite": true,
+       "n_at_bound": 2
+      },
+      {
+       "start": 4,
+       "screen_cost": null,
+       "initial_cost": 15617.6298828125,
+       "final_cost": 13278.908203125,
+       "nit": 69,
+       "nfev": 111,
+       "message": "Optimization terminated successfully",
+       "time_s": 10.39605562388897,
+       "start_grad_norm": 7439.868636612577,
+       "start_grad_finite": true,
+       "n_at_bound": 3
+      }
+     ],
+     "plan": [
+      [
+       113.23999434857703,
+       28.09328046989071,
+       0.6446737641995924
+      ],
+      [
+       121.96135972000553,
+       179.51820050066152,
+       1.0442885036933287
+      ],
+      [
+       131.66968383789063,
+       91.10205290077246,
+       1.7105892654860093
+      ],
+      [
+       130.77499239070585,
+       2.7864295450247654,
+       1.693911586013431
+      ],
+      [
+       103.27791726743149,
+       179.06816223500567,
+       0.9590051896585136
+      ],
+      [
+       131.6696838378906,
+       64.13185458331857,
+       0.5
+      ]
+     ]
+    },
+    "default": {
+     "final_cost": 13344.423828125,
+     "wall_s": 11.539853736758232,
+     "time_s": {
+      "A_screen": 0.0,
+      "B_select": 0.0,
+      "C_refine": 11.532859578728676
+     },
+     "best_start": 0,
+     "starts": [
+      {
+       "start": null,
+       "screen_cost": null,
+       "initial_cost": 17656.37890625,
+       "final_cost": 13344.423828125,
+       "nit": 43,
+       "nfev": 122,
+       "message": "Optimization terminated successfully",
+       "time_s": 11.438871942460537,
+       "start_grad_norm": 14042.443678602132,
+       "start_grad_finite": true,
+       "n_at_bound": 0
+      }
+     ],
+     "plan": [
+      [
+       112.40720346033083,
+       8.960828368900428,
+       1.25770475655622
+      ],
+      [
+       94.29157745796759,
+       179.99922056922537,
+       0.9051542581188365
+      ],
+      [
+       130.264864859039,
+       32.1030681823506,
+       0.6023312292862346
+      ],
+      [
+       128.9010698898443,
+       176.49944001223838,
+       0.9796253412139104
+      ],
+      [
+       129.92360268977217,
+       27.185719904022868,
+       0.747711108205309
+      ],
+      [
+       131.56952212482122,
+       87.11352895459595,
+       1.3610086102681884
+      ]
+     ]
+    }
+   }
+  }
+ ],
+ "training_action_ranges": {
+  "die_center_mm": [
+   30.611470610887267,
+   159.4628517618771
+  ],
+  "angle_deg": [
+   -4.964509621079227,
+   94.97881865088435
+  ],
+  "stroke_mm": [
+   0.12463254911693067,
+   2.0
+  ]
+ },
+ "timing": {
+  "forward_rollout_single_s": 0.0385957807302475,
+  "forward_rollout_batched_per_sample_s": 0.02905850738286972
+ },
+ "summary": {
+  "topk": {
+   "name": "Top-5 of N = 200",
+   "mean_cost_vs_default": 0.9624210851240478,
+   "wins_vs_default": 5,
+   "mean_wall_s": 48.05318531021476,
+   "mean_nfev_per_solve": 91.36666666666666,
+   "solves_ending_on_a_bound_var": 25
+  },
+  "random": {
+   "name": "5 random starts",
+   "mean_cost_vs_default": 0.9751050232940829,
+   "wins_vs_default": 5,
+   "mean_wall_s": 37.16958268856009,
+   "mean_nfev_per_solve": 79.63333333333334,
+   "solves_ending_on_a_bound_var": 28
+  },
+  "default": {
+   "name": "Single default start",
+   "mean_cost_vs_default": 1.0,
+   "wins_vs_default": 0,
+   "mean_wall_s": 7.641622080157201,
+   "mean_nfev_per_solve": 80.83333333333333,
+   "solves_ending_on_a_bound_var": 4
+  }
+ }
+}

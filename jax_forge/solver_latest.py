@@ -477,7 +477,7 @@ def custom_solver(A_sp, b_active, x0_active,solver_options):
 def linear_solver(A, b, x0, solver_options):
 
     # If user does not specify any solver, set jax_solver as the default one.
-    if  len(solver_options.keys() & {'jax_solver', 'umfpack_solver', 'petsc_solver',
+    if  len(solver_options.keys() & {'jax_solver', 'umfpack_solver', 'petsc_solver', 'scipy_solver',
                                      'AMGX_solver', 'custom_solver','pardiso_solver','cupy_solver'}) == 0:
         solver_options['jax_solver'] = {}
 
@@ -486,6 +486,9 @@ def linear_solver(A, b, x0, solver_options):
         x = jax_solve(A, b, x0, precond)
     elif 'umfpack_solver' in solver_options:
         x = umfpack_solve(A, b)
+    elif 'scipy_solver' in solver_options:
+        # Direct sparse solve (scipy spsolve). umfpack_solve above is actually AMGX.
+        x = np.array(umfpack_solve_host(A, b))
     elif 'petsc_solver' in solver_options:
         ksp_type = solver_options['petsc_solver']['ksp_type'] if 'ksp_type' in solver_options['petsc_solver'] else  'bcgsl'
         pc_type = solver_options['petsc_solver']['pc_type'] if 'pc_type' in solver_options['petsc_solver'] else 'ilu'

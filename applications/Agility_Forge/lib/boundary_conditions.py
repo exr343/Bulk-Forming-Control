@@ -7,6 +7,11 @@ re-detected at EVERY load step from the current deformed configuration
 (``pts + sol_u``), so contact follows the actual bulged/flattened surface and
 material that is pushed away is released automatically.
 
+Where the die acts along the bar is set by the Hit: either a spatial die
+(``die_center_mm``, fixed width, pressing the points CURRENTLY under it) or the
+original band (``x_min_band``/``x_max_band``, fractions of H on the undeformed
+bar) -- see hit_config.Hit.
+
 Contains:
   - build_cylinder_press_bcs:  per-hit dynamic-contact Dirichlet + thermal BC
   - refresh_problem_surface_integrals:  recompute surface data after
@@ -36,8 +41,8 @@ def build_cylinder_press_bcs(mesh, R, H, hit, current_sol_u=None, T_linear_fn=No
     Parameters:
     -----------
     hit : Hit
-        Hit object containing x_min_band, x_max_band, compression_displacement,
-        rotation_euler_x
+        Hit object containing the die position (die_center_mm/die_width_mm, or
+        x_min_band/x_max_band), compression_displacement, rotation_euler_x
     current_sol_u : array or None
         Displacement field accumulated at the START of this hit (num_nodes, 3).
         Used to define the initial deformed surface from which the rigid platen
@@ -54,7 +59,9 @@ def build_cylinder_press_bcs(mesh, R, H, hit, current_sol_u=None, T_linear_fn=No
 
       * A candidate node (outer-surface node inside the axial x-band) is in
         contact when its current rotated normal coordinate has reached /
-        penetrated the moving platen plane.
+        penetrated the moving platen plane. For the spatial die the x-band test
+        uses the node's current x and is also redone every step, so a node that
+        slides out from under the die before touching it is not pressed.
       * Each contacting node is projected back onto the platen plane while
         keeping its current tangential position (frictional-stick increment).
       * Non-contacting nodes are left free, so material pushed away from the
@@ -87,14 +94,24 @@ def build_cylinder_press_bcs(mesh, R, H, hit, current_sol_u=None, T_linear_fn=No
         # rotated frame -> global
         return vectors @ rot_matrix
 
-    # band in x where platens act (reference configuration)
-    x_min_band = hit.x_min_band * H
-    x_max_band = hit.x_max_band * H
+    spatial_die = hit.spatial_die
+    if spatial_die:
+        # die footprint in x, fixed in space (tested against CURRENT positions)
+        x_min_band = float(hit.die_center_mm) - 0.5 * float(hit.die_width_mm)
+        x_max_band = float(hit.die_center_mm) + 0.5 * float(hit.die_width_mm)
+    else:
+        # band in x where platens act (reference configuration)
+        x_min_band = hit.x_min_band * H
+        x_max_band = hit.x_max_band * H
     compression_displacement = float(hit.compression_displacement)
 
     print("Applied rotation quaternion: {0}".format(rotation_quaternion))
-    print("Hit: x_band=[{0}, {1}], disp={2}, rot_x={3}".format(
-        hit.x_min_band, hit.x_max_band, hit.compression_displacement, hit.rotation_euler_x))
+    if spatial_die:
+        print("Hit: spatial die centre={0} mm, width={1} mm, disp={2}, rot_x={3}".format(
+            hit.die_center_mm, hit.die_width_mm, hit.compression_displacement, hit.rotation_euler_x))
+    else:
+        print("Hit: x_band=[{0}, {1}], disp={2}, rot_x={3}".format(
+            hit.x_min_band, hit.x_max_band, hit.compression_displacement, hit.rotation_euler_x))
     print("x_min_band:{0}, x_max_band:{1}".format(x_min_band, x_max_band))
 
     # tolerances
@@ -117,12 +134,12 @@ def build_cylinder_press_bcs(mesh, R, H, hit, current_sol_u=None, T_linear_fn=No
     # ----- candidate contact nodes: outer-surface lateral nodes within x-band -----
     # Boundary topology does not change with deformation, so the candidate set is
     # fixed (reference); the dynamic contact set is a subset re-selected per step.
-    candidate_mask = surface_mask & in_x_band_np(pts)
+    # Spatial die: every outer-surface node is a candidate; which are under the
+    # die is decided from current x (`under0` at hit start, every step in
+    # compute_contact).
+    candidate_mask = surface_mask if spatial_die else surface_mask & in_x_band_np(pts)
     candidate_inds = onp.where(candidate_mask)[0].astype(onp.int32)
     n_cand = len(candidate_inds)
-    print(f"[BC] candidate contact node count (x-band outer surface): {n_cand}")
-    if n_cand == 0:
-        print("[BC WARNING] no candidate contact nodes. Check x_band / tol_r / mesh.")
 
     # reference rotated coordinates of candidates
     X_cand = pts[candidate_inds]
@@ -131,9 +148,14 @@ def build_cylinder_press_bcs(mesh, R, H, hit, current_sol_u=None, T_linear_fn=No
     # initial deformed (rotated) coordinates at the START of this hit
     xdef0_cand = X_cand + current_sol_u_np[candidate_inds]
     xdef0_cand_rot = transform_points(xdef0_cand)
-    if n_cand > 0:
-        y_rot_min0 = float(xdef0_cand_rot[:, 1].min())
-        y_rot_max0 = float(xdef0_cand_rot[:, 1].max())
+    under0 = in_x_band_np(xdef0_cand) if spatial_die else onp.ones(n_cand, dtype=bool)
+    n_under0 = int(under0.sum())
+    print(f"[BC] candidate contact node count (x-band outer surface): {n_under0}")
+    if n_under0 == 0:
+        print("[BC WARNING] no candidate contact nodes. Check x_band / tol_r / mesh.")
+    if n_under0 > 0:
+        y_rot_min0 = float(xdef0_cand_rot[under0, 1].min())
+        y_rot_max0 = float(xdef0_cand_rot[under0, 1].max())
     else:
         y_rot_min0 = float(transform_points(pts)[:, 1].min())
         y_rot_max0 = float(transform_points(pts)[:, 1].max())
@@ -192,6 +214,11 @@ def build_cylinder_press_bcs(mesh, R, H, hit, current_sol_u=None, T_linear_fn=No
 
         left_local = yc <= (y_L + tol_contact)
         right_local = yc >= (y_R - tol_contact)
+        if spatial_die:
+            # only nodes currently under the die
+            under = in_x_band_np(X_cand + u_cand)
+            left_local &= under
+            right_local &= under
 
         # resolve overlap by midline so each node is assigned to one platen only
         overlap = left_local & right_local
@@ -275,11 +302,11 @@ def build_cylinder_press_bcs(mesh, R, H, hit, current_sol_u=None, T_linear_fn=No
     # ===== Thermal convection surface (STATIC for this hit) =====
     # Split the candidate band into lower/upper halves by the initial deformed
     # mid-plane; used as the convective heat-loss surface near the platens.
-    if n_cand > 0:
+    if n_under0 > 0:
         mid0 = 0.5 * (y_rot_min0 + y_rot_max0)
         yc0 = xdef0_cand_rot[:, 1]
-        conv_left_inds = np.array(candidate_inds[yc0 <= mid0], dtype=int)
-        conv_right_inds = np.array(candidate_inds[yc0 > mid0], dtype=int)
+        conv_left_inds = np.array(candidate_inds[under0 & (yc0 <= mid0)], dtype=int)
+        conv_right_inds = np.array(candidate_inds[under0 & (yc0 > mid0)], dtype=int)
     else:
         conv_left_inds = np.array([], dtype=int)
         conv_right_inds = np.array([], dtype=int)

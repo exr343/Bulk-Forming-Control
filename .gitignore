@@ -93,3 +93,6 @@ applications/Agility_Forge/control/results/**/plant_state.npz
 applications/Agility_Forge/GNN/gap_control/
 # Second message-passing sweep: per-run finetune output (regenerable).
 applications/Agility_Forge/GNN/mp_sweep_finished/finetune/
+# MPC run solver checkpoints (resume state, ~50 MB each) and progress GIFs (~20 MB each)
+applications/Agility_Forge/control/results/**/checkpoint.npz
+applications/Agility_Forge/control/results/**/*.gif

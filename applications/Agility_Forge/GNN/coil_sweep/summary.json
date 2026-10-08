@@ -1,0 +1,102 @@
+{
+ "1": {
+  "cycle_chain_mean_hausdorff_mm": 0.8922170996665955,
+  "cycle_chain_mean_chamfer_mm2": 0.2068494288623333,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.8961539000272751,
+  "reheat_step_error_mm": 0.17230784476679914,
+  "reheat_no_change_error_mm": 0.18537145896869547,
+  "short_stroke_rmse_before_mm": 0.05729884592173076,
+  "short_stroke_rmse_after_mm": 0.0579024823343689,
+  "gradient_time_s": 0.029027260839939117
+ },
+ "2": {
+  "cycle_chain_mean_hausdorff_mm": 0.8282766434550285,
+  "cycle_chain_mean_chamfer_mm2": 0.20523374661803245,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.82944056391716,
+  "reheat_step_error_mm": 0.17396251309443922,
+  "reheat_no_change_error_mm": 0.18537145896869547,
+  "short_stroke_rmse_before_mm": 0.05648201090817157,
+  "short_stroke_rmse_after_mm": 0.05795929147590112,
+  "gradient_time_s": 0.04041442275047302
+ },
+ "3": {
+  "cycle_chain_mean_hausdorff_mm": 0.8098973909020424,
+  "cycle_chain_mean_chamfer_mm2": 0.19497861724346877,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.8112160867452621,
+  "reheat_step_error_mm": 0.17049176859505036,
+  "reheat_no_change_error_mm": 0.18537145896869547,
+  "short_stroke_rmse_before_mm": 0.0557281422282422,
+  "short_stroke_rmse_after_mm": 0.056233349442474906,
+  "gradient_time_s": 0.052936211228370667
+ },
+ "4": {
+  "cycle_chain_mean_hausdorff_mm": 0.8129428565502167,
+  "cycle_chain_mean_chamfer_mm2": 0.1970514052733779,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.8230275523662567,
+  "reheat_step_error_mm": 0.1667998803450781,
+  "reheat_no_change_error_mm": 0.18537145896869547,
+  "short_stroke_rmse_before_mm": 0.056007410298997015,
+  "short_stroke_rmse_after_mm": 0.056343436512860244,
+  "gradient_time_s": 0.06087958626449108
+ },
+ "5": {
+  "cycle_chain_mean_hausdorff_mm": 0.7923784953355789,
+  "cycle_chain_mean_chamfer_mm2": 0.20076267370954157,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.8081484431028366,
+  "reheat_step_error_mm": 0.16643864464233904,
+  "reheat_no_change_error_mm": 0.18537145896869547,
+  "short_stroke_rmse_before_mm": 0.05518010969979702,
+  "short_stroke_rmse_after_mm": 0.05647887184367562,
+  "gradient_time_s": 0.07248202711343765
+ },
+ "6": {
+  "cycle_chain_mean_hausdorff_mm": 0.8199659952521324,
+  "cycle_chain_mean_chamfer_mm2": 0.2106670962460339,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.8302407494187355,
+  "reheat_step_error_mm": 0.16490732746965744,
+  "reheat_no_change_error_mm": 0.18537145896869547,
+  "short_stroke_rmse_before_mm": 0.05565575081619582,
+  "short_stroke_rmse_after_mm": 0.05617794921904117,
+  "gradient_time_s": 0.08418003842234612
+ },
+ "7": {
+  "cycle_chain_mean_hausdorff_mm": 0.8388420709967613,
+  "cycle_chain_mean_chamfer_mm2": 0.211692175231874,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.8404334816336632,
+  "reheat_step_error_mm": 0.16475417727933211,
+  "reheat_no_change_error_mm": 0.18537145896869547,
+  "short_stroke_rmse_before_mm": 0.05547832629540736,
+  "short_stroke_rmse_after_mm": 0.056656624660407,
+  "gradient_time_s": 0.09419792518019676
+ },
+ "8": {
+  "cycle_chain_mean_hausdorff_mm": 0.8216808503866195,
+  "cycle_chain_mean_chamfer_mm2": 0.19820366010069848,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.8258319655060768,
+  "reheat_step_error_mm": 0.1697120841811685,
+  "reheat_no_change_error_mm": 0.18537145896869547,
+  "short_stroke_rmse_before_mm": 0.05483366966711092,
+  "short_stroke_rmse_after_mm": 0.055563380413836426,
+  "gradient_time_s": 0.10393769666552544
+ },
+ "9": {
+  "cycle_chain_mean_hausdorff_mm": 0.8110454162955284,
+  "cycle_chain_mean_chamfer_mm2": 0.2041992044262588,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.8169553545117378,
+  "reheat_step_error_mm": 0.16706628505797946,
+  "reheat_no_change_error_mm": 0.18537145896869547,
+  "short_stroke_rmse_before_mm": 0.054924133474669457,
+  "short_stroke_rmse_after_mm": 0.05630261756203255,
+  "gradient_time_s": 0.11424427106976509
+ },
+ "10": {
+  "cycle_chain_mean_hausdorff_mm": 0.822901830971241,
+  "cycle_chain_mean_chamfer_mm2": 0.20510217323899269,
+  "cycle_chain_no_reheat_change_hausdorff_mm": 0.8306624713540077,
+  "reheat_step_error_mm": 0.1709708542946507,
+  "reheat_no_change_error_mm": 0.18537145896869547,
+  "short_stroke_rmse_before_mm": 0.05427639956316786,
+  "short_stroke_rmse_after_mm": 0.05538493349134367,
+  "gradient_time_s": 0.12835173681378365
+ }
+}

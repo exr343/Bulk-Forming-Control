@@ -6,6 +6,11 @@ script used to make new figures. Written with the `add-report` skill
 
 ## Control (MPC)
 
+- 2026-10-08 — [MPC stage briefing (for handing to another agent)](control_reports/2026-10-08_mpc_briefing/report.md) ([PDF](control_reports/2026-10-08_mpc_briefing/report.pdf)):
+  self-contained summary of the coil MPC: problem, GNN interface, loop, cost, multi-start planner, run history, files, open issues.
+- 2026-10-08 — [Multi-start planner (random shooting + top-K SLSQP)](control_reports/2026-10-08_multistart_planner/report.md) ([PDF](control_reports/2026-10-08_multistart_planner/report.pdf)):
+  top-5 of 200 lowers the GNN-predicted cost 3.8% vs the single default start (5 of 6 problems), 5 random starts 2.5%;
+  48 vs 7.6 s per plan; all checks pass (deterministic GPU mode needed). GNN-only; simulator test is MPC job 3990381.
 - 2026-09-27 — [Cost experiment 12: cross-section-only cost](control_reports/2026-09-27_cost_e12_cross_section_only/report.md):
   squares the bar better (95% of hits on the flats) but stretches it less (free end 34.8 vs 40.7 mm); Chamfer 42.1 vs 22.0 mm²
   for the 25% share, so length does not follow on its own within 50 hits. 25% share + 0.5-2 mm stroke stays best.
@@ -50,6 +55,10 @@ script used to make new figures. Written with the `add-report` skill
 
 ## GNN
 
+- 2026-10-07 — [Coil GNN with temperature in the state: nodes, edges and the MPC](GNN_reports/2026-10-07_coil_T_graph_and_mpc/report.md) ([PDF](GNN_reports/2026-10-07_coil_T_graph_and_mpc/report.pdf)):
+  design report. 4355 surface nodes × 16 inputs (flags, die push, distance to die, displacement, temperature, controls),
+  26,118 directed edges × 8 inputs, 4 outputs (change of x, y, z, temperature); how the MPC plans 6 hits per cycle through it.
+  Temperature-state MPC changes decided, not yet implemented; training sweep in progress.
 - 2026-09-27 — [Absolute gap control](GNN_reports/2026-09-27_gap_control/report.md): the half-gap input is as accurate
   as the stroke input on seed 3; adding 10% no-change examples cuts predicted stretch on missed hits from 0.30 to
   0.015 mm, and both gap models predict experiment 8's first failing hits better (experiment 9's model).
