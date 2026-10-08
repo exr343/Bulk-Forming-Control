@@ -15,7 +15,8 @@ For every hit:
   error  = sum over surface nodes of the squared y, z error of the members'
            mean shape vs the simulator, mm^2 (the MPC cost's units).
 Reports Pearson (raw and log-log) and Spearman correlations per source and
-pooled, the median error/spread ratio, and saves a spread-vs-error scatter (log
+pooled, Spearman among hits at the same position in their cycle (both grow
+along a chain, which alone would correlate them), the median error/spread ratio, and saves a spread-vs-error scatter (log
 axes) and spread and error along each MPC run.
 
 Usage (from the repo root):
@@ -79,7 +80,13 @@ def stats(rows):
     if len(rows) < 3:
         return {"n_hits": len(rows)}
     ok = (s > 0) & (e > 0)
+    # Both grow along a cycle's chain (later hits are predicted from predictions), which alone gives a
+    # correlation; the within-position Spearman ranks only hits at the same position in their cycle.
+    pos = np.array([r["hit_in_cycle"] for r in rows])
+    within = {int(k): float(spearmanr(s[pos == k], e[pos == k])[0]) for k in np.unique(pos) if (pos == k).sum() >= 4}
     return {"n_hits": len(rows),
+            "spearman_within_position": within,
+            "spearman_within_position_mean": float(np.mean(list(within.values()))) if within else None,
             "pearson": float(pearsonr(s, e)[0]),
             "pearson_log": float(pearsonr(np.log(s[ok]), np.log(e[ok]))[0]) if ok.sum() >= 3 else None,
             "spearman": float(spearmanr(s, e)[0]),
