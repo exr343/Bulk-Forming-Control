@@ -96,3 +96,5 @@ applications/Agility_Forge/GNN/mp_sweep_finished/finetune/
 # MPC run solver checkpoints (resume state, ~50 MB each) and progress GIFs (~20 MB each)
 applications/Agility_Forge/control/results/**/checkpoint.npz
 applications/Agility_Forge/control/results/**/*.gif
+# NFS temp files (open-but-deleted files on the shared filesystem)
+.nfs*
