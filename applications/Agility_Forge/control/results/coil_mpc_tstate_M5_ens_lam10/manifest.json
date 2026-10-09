@@ -1,0 +1,55 @@
+{
+  "n_hits_per_rollout": 0,
+  "band_width_frac": null,
+  "min_compression_displacement_mm": 0.5,
+  "max_compression_displacement_mm": 2.0,
+  "total_time_s": 0.8,
+  "generation_runs": [
+    {
+      "timestamp": "2026-10-09T03:30:53.279309+00:00",
+      "slurm_job_id": "3994571"
+    }
+  ],
+  "records": [],
+  "part": "square_coil_mpc",
+  "mpc": {
+    "checkpoint": null,
+    "checkpoints": [
+      "applications/Agility_Forge/GNN/coil_T_sweep_test_square/mp_5/stage3.pt",
+      "applications/Agility_Forge/GNN/coil_T_ensemble_test_square/seed_1/mp_5/stage3.pt",
+      "applications/Agility_Forge/GNN/coil_T_ensemble_test_square/seed_2/mp_5/stage3.pt",
+      "applications/Agility_Forge/GNN/coil_T_ensemble_test_square/seed_3/mp_5/stage3.pt",
+      "applications/Agility_Forge/GNN/coil_T_ensemble_test_square/seed_4/mp_5/stage3.pt"
+    ],
+    "n_members": 5,
+    "var_weight": 10.0,
+    "cost": "cross-section of the members' mean shape, sum over 6 + var_weight * members' y,z variance, sum over nodes and 6",
+    "gnn_state": "displacement + temperature (coil_T.py)",
+    "temperature_at_scan": "measured (simulator surface temperature, an IR camera in practice)",
+    "stroke_mm": [
+      0.5,
+      2.0
+    ],
+    "angle_deg": [
+      0.0,
+      180.0
+    ],
+    "coil": "average of the 6 planned die centres",
+    "planner": {
+      "n_samples": 100,
+      "top_k": 5,
+      "sample_batch": 50,
+      "seed": 0,
+      "sample_train_range": false,
+      "include_warm_start": false,
+      "refinement": "SLSQP, maxiter 100, one per start"
+    },
+    "reheat_rule": "keep the hotter of current and coil temperature",
+    "stop_check_from_mm": 31.583333333333336,
+    "linear_solver": "scipy (direct)",
+    "max_cycles": 20,
+    "stop_tol_mm": 0.2
+  },
+  "reheats": [],
+  "cycles": []
+}

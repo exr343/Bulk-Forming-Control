@@ -25,8 +25,11 @@ gradients, and the K best are each refined by the single-shooting SQP
     left to volume conservation); temperature is not in the cost;
   - bounds: die centre from 31.58 mm (the data runs' first station, die edge
     at the target's square start) to the scanned free end minus half the die
-    and 3 mm; angle 0-180 deg; stroke 0.5-2 mm. (The +-11 mm coil-zone
-    constraint of the first run was removed on 2026-10-08.)
+    and 3 mm; angle 0-180 deg; stroke 0.5-2 mm. Optional coil zone
+    (--coil-zone-mm, the first run's 11 mm; off by default since 2026-10-08):
+    every die centre within that distance of the mean of the 6 (the coil
+    centre), linear constraints in the SLSQP refinement (screening samples
+    ignore it).
 Stops when every width from the first station (31.58 mm) to 4 mm before the
 free end is within 10.6 + 0.2 mm (same width measure as the progress
 figures), or after 20 cycles. The x ~ 27 mm spot next to the taper is not
@@ -272,9 +275,9 @@ class Planner:
     ensemble_cost with `var_weight` (lambda) in A and C alike."""
 
     def __init__(self, model, mesh, x_tgt, device, maxiter=100, n_samples=100, top_k=5, sample_batch=50, seed=0,
-                 sample_train_range=False, include_warm_start=False, var_weight=0.0):
+                 sample_train_range=False, include_warm_start=False, var_weight=0.0, coil_zone_mm=None):
         self.models = list(model) if isinstance(model, (list, tuple)) else [model]
-        self.model, self.var_weight = self.models[0], float(var_weight)
+        self.model, self.var_weight, self.coil_zone_mm = self.models[0], float(var_weight), coil_zone_mm
         self.mesh, self.x_tgt, self.device, self.maxiter = mesh, x_tgt, device, maxiter
         self.n_samples, self.top_k, self.sample_batch, self.seed = n_samples, top_k, sample_batch, seed
         self.sample_train_range, self.include_warm_start = sample_train_range, include_warm_start
@@ -336,14 +339,26 @@ class Planner:
         c0, g0 = cost_grad(z0)
         c0 = max(c0, 1e-12)                        # SLSQP on a rescaled problem (see mpc.py's 2026-09-26 fix)
         t0 = time.perf_counter()
+        ic = onp.arange(HITS_PER_CYCLE) * 3
+        cons = []
+        if self.coil_zone_mm is not None:
+            # Coil zone (the first run's constraint): |c_k - mean(c)| <= coil_zone_mm. All centres share the
+            # same bounds, so in the rescaled variables this is |z_k - mean(z)| <= coil_zone_mm / span (linear).
+            lim = self.coil_zone_mm / span[0]
+            for k in range(HITS_PER_CYCLE):
+                g = onp.zeros(len(z0)); g[ic] = -1.0 / HITS_PER_CYCLE; g[ic[k]] += 1.0     # z_k - mean(z)
+                cons += [{"type": "ineq", "fun": lambda z, g=g: lim - g @ z, "jac": lambda z, g=g: -g},
+                         {"type": "ineq", "fun": lambda z, g=g: lim + g @ z, "jac": lambda z, g=g: g}]
         res = minimize(lambda z: tuple(v / c0 for v in cost_grad(z)), z0, jac=True, method="SLSQP",
-                       bounds=[(0.0, 1.0)] * len(z0), options={"maxiter": self.maxiter})
+                       bounds=[(0.0, 1.0)] * len(z0), constraints=cons, options={"maxiter": self.maxiter})
         z = onp.clip(res.x, 0.0, 1.0)
+        c_die = lo[ic] + z[ic] * span[ic]
         return lo + z * span, {"terms": self.cost_terms(lo + z * span, x_scan, T_scan, first), "initial_cost": c0, "final_cost": float(res.fun) * c0, "nit": int(res.nit),
                                "nfev": nfev[0], "message": str(res.message), "status": int(res.status),
                                "time_s": time.perf_counter() - t0,
                                "start_grad_norm": float(onp.linalg.norm(g0)), "start_grad_finite": bool(onp.isfinite(g0).all()),
-                               "n_at_bound": int(((z <= 1e-9) | (z >= 1 - 1e-9)).sum())}
+                               "n_at_bound": int(((z <= 1e-9) | (z >= 1 - 1e-9)).sum()),
+                               "max_die_to_coil_mm": float(onp.abs(c_die - c_die.mean()).max())}
 
     @torch.no_grad()
     def cost_terms(self, u, x_scan, T_scan, first):
@@ -397,6 +412,7 @@ class Planner:
                      "time_s": {"A_screen": tA, "B_select": tB, "C_refine": tC},
                      "screen_time_per_rollout_s": tA / self.n_samples if screen is not None else None})
         info = {"initial_cost": rb["initial_cost"], "final_cost": rb["final_cost"], "cost_terms": rb["terms"], "nit": rb["nit"],
+                "max_die_to_coil_mm": rb["max_die_to_coil_mm"], "coil_zone_mm": self.coil_zone_mm,
                 "message": rb["message"], "plan_time_s": time.perf_counter() - t0, "bounds_die_mm": [x0, hi],
                 "multistart": diag}
         return u.reshape(HITS_PER_CYCLE, 3), info
@@ -440,6 +456,8 @@ def main():
                    help="Sample only within the training data's action ranges (overlap with the bounds).")
     p.add_argument("--include-warm-start", action="store_true",
                    help="The previous cycle's plan replaces the worst of the K starts.")
+    p.add_argument("--coil-zone-mm", type=float, default=None,
+                   help="Keep every die centre within this distance of the coil centre (first run: 11; default off).")
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = p.parse_args()
 
@@ -457,7 +475,7 @@ def main():
     import meshio
     x_tgt = torch.tensor(meshio.read(TARGET_VTU).point_data["Displacement"], dtype=torch.float32, device=dev)
     planner = Planner(models, mesh, x_tgt, dev, args.maxiter, args.n_samples, args.top_k, args.sample_batch, args.seed,
-                      args.sample_train_range, args.include_warm_start, args.var_weight)
+                      args.sample_train_range, args.include_warm_start, args.var_weight, args.coil_zone_mm)
     print("training-data action ranges (for comparison with the bounds):", json.dumps(planner.train_ranges), flush=True)
 
     os.makedirs(f"{args.out_dir}/rollout_01", exist_ok=True)
@@ -476,6 +494,7 @@ def main():
                                                "temperature_at_scan": "measured (simulator surface temperature, an IR camera in practice)",
                                                "stroke_mm": [U_MIN_MM, U_MAX_MM], "angle_deg": list(ANGLE_RANGE),
                                                "coil": "average of the 6 planned die centres",
+                                               "coil_zone_mm": args.coil_zone_mm,
                                                "planner": {"n_samples": args.n_samples, "top_k": args.top_k,
                                                            "sample_batch": args.sample_batch, "seed": args.seed,
                                                            "sample_train_range": args.sample_train_range,
