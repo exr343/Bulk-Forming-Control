@@ -1,0 +1,221 @@
+{
+  "n_hits_per_rollout": 1,
+  "band_width_frac": null,
+  "min_compression_displacement_mm": 0.5,
+  "max_compression_displacement_mm": 2.0,
+  "total_time_s": 0.8,
+  "generation_runs": [
+    {
+      "timestamp": "2026-10-09T03:44:50.755983+00:00",
+      "slurm_job_id": "3994646"
+    }
+  ],
+  "records": [
+    {
+      "rollout": 1,
+      "hit": 0,
+      "kind": "undeformed",
+      "vtu_path": "rollout_01/undeformed.vtu"
+    },
+    {
+      "rollout": 1,
+      "hit": 1,
+      "kind": "hit_final",
+      "cycle": 1,
+      "die_center_mm": 32.330433679116204,
+      "die_width_mm": 12.7,
+      "R_j_deg": 1.506920314535078,
+      "u_j_mm": 1.8007790222381899,
+      "total_time_s": 0.8,
+      "pass": null,
+      "station": null,
+      "split_part": 0,
+      "forecast_rmse_mm": 0.07213137822304119,
+      "forecast_T_abs_err_C": 5.438202587150531,
+      "forecast_spread_mm2": 7.802731513977051,
+      "forecast_yz_sq_err_mm2": 41.469524395837624,
+      "free_end_mm": 98.38840091639301,
+      "wall_time_s": 494.49986720085144,
+      "vtu_path": "rollout_01/hit_01_final.vtu"
+    }
+  ],
+  "part": "square_coil_mpc",
+  "mpc": {
+    "checkpoint": null,
+    "checkpoints": [
+      "applications/Agility_Forge/GNN/coil_T_sweep_test_square/mp_5/stage3.pt",
+      "applications/Agility_Forge/GNN/coil_T_ensemble_test_square/seed_1/mp_5/stage3.pt",
+      "applications/Agility_Forge/GNN/coil_T_ensemble_test_square/seed_2/mp_5/stage3.pt",
+      "applications/Agility_Forge/GNN/coil_T_ensemble_test_square/seed_3/mp_5/stage3.pt",
+      "applications/Agility_Forge/GNN/coil_T_ensemble_test_square/seed_4/mp_5/stage3.pt"
+    ],
+    "n_members": 5,
+    "var_weight": 10.0,
+    "cost": "cross-section of the members' mean shape, sum over 6 + var_weight * members' y,z variance, sum over nodes and 6",
+    "gnn_state": "displacement + temperature (coil_T.py)",
+    "temperature_at_scan": "measured (simulator surface temperature, an IR camera in practice)",
+    "stroke_mm": [
+      0.5,
+      2.0
+    ],
+    "angle_deg": [
+      0.0,
+      180.0
+    ],
+    "coil": "average of the 6 planned die centres",
+    "coil_zone_mm": 11.0,
+    "planner": {
+      "n_samples": 1,
+      "top_k": 5,
+      "sample_batch": 50,
+      "seed": 0,
+      "sample_train_range": false,
+      "include_warm_start": false,
+      "refinement": "SLSQP, maxiter 100, one per start"
+    },
+    "reheat_rule": "keep the hotter of current and coil temperature",
+    "stop_check_from_mm": 31.583333333333336,
+    "linear_solver": "scipy (direct)",
+    "max_cycles": 20,
+    "stop_tol_mm": 0.2
+  },
+  "reheats": [
+    {
+      "rollout": 1,
+      "hit": 1,
+      "cycle": 1,
+      "coil_center_mm": 42.64679197446551,
+      "vtu_path": "rollout_01/undeformed.vtu",
+      "wall_time_s": 0.08284401893615723,
+      "max_jump_C": null,
+      "n_ramp": 0
+    }
+  ],
+  "cycles": [
+    {
+      "cycle": 1,
+      "start_hit": 1,
+      "coil_center_mm": 42.64679197446551,
+      "plan": [
+        {
+          "die_center_mm": 32.330433679116204,
+          "R_j_deg": 1.506920314535078,
+          "u_j_mm": 1.8007790222381899
+        },
+        {
+          "die_center_mm": 32.17557786635397,
+          "R_j_deg": 89.42222996891824,
+          "u_j_mm": 1.9999999999917928
+        },
+        {
+          "die_center_mm": 48.16462246818593,
+          "R_j_deg": 0.19857159279200381,
+          "u_j_mm": 1.748946604418049
+        },
+        {
+          "die_center_mm": 48.39978667781284,
+          "R_j_deg": 89.2676608991813,
+          "u_j_mm": 1.9999999999929199
+        },
+        {
+          "die_center_mm": 49.31594191114238,
+          "R_j_deg": 3.089568048412376,
+          "u_j_mm": 1.557375803146142
+        },
+        {
+          "die_center_mm": 45.494389244181704,
+          "R_j_deg": 95.18134371633364,
+          "u_j_mm": 1.7091245356770715
+        }
+      ],
+      "worst_width_at_scan_mm": 15.868412017822266,
+      "initial_cost": 84682.8515625,
+      "final_cost": 78936.5546875,
+      "cost_terms": {
+        "cost": 78936.5546875,
+        "cross_section_mm2": 78091.4375,
+        "spread_mm2": 84.51165771484375,
+        "var_weight": 10.0,
+        "n_members": 5
+      },
+      "nit": 24,
+      "max_die_to_coil_mm": 10.471214108111539,
+      "coil_zone_mm": 11.0,
+      "message": "Optimization terminated successfully",
+      "plan_time_s": 28.155433513224125,
+      "bounds_die_mm": [
+        31.583333333333336,
+        87.17000427246094
+      ],
+      "multistart": {
+        "mode": "default",
+        "n_samples": 1,
+        "top_k": 5,
+        "sample_batch": 50,
+        "seed": 0,
+        "cycle_seed": [
+          0,
+          1
+        ],
+        "sample_train_range": false,
+        "training_action_ranges": {
+          "die_center_mm": [
+            30.611470610887267,
+            159.4628517618771
+          ],
+          "angle_deg": [
+            -4.964509621079227,
+            94.97881865088435
+          ],
+          "stroke_mm": [
+            0.12463254911693067,
+            2.0
+          ]
+        },
+        "screening_costs": null,
+        "selected": [
+          null
+        ],
+        "starts": [
+          {
+            "start": null,
+            "screen_cost": null,
+            "terms": {
+              "cost": 78936.5546875,
+              "cross_section_mm2": 78091.4375,
+              "spread_mm2": 84.51165771484375,
+              "var_weight": 10.0,
+              "n_members": 5
+            },
+            "initial_cost": 84682.8515625,
+            "final_cost": 78936.5546875,
+            "nit": 24,
+            "nfev": 73,
+            "message": "Optimization terminated successfully",
+            "status": 0,
+            "time_s": 27.406646996736526,
+            "start_grad_norm": 23378.150291149494,
+            "start_grad_finite": true,
+            "n_at_bound": 2,
+            "max_die_to_coil_mm": 10.471214108111539
+          }
+        ],
+        "best_start": 0,
+        "time_s": {
+          "A_screen": 0.0,
+          "B_select": 0.0,
+          "C_refine": 28.15535768121481
+        },
+        "screen_time_per_rollout_s": null
+      },
+      "forecast_spread_mm2_by_hit": [
+        7.802731513977051,
+        8.35635757446289,
+        9.296209335327148,
+        11.931192398071289,
+        19.39525604248047,
+        27.713985443115234
+      ]
+    }
+  ]
+}

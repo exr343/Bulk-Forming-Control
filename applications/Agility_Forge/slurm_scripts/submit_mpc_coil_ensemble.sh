@@ -18,7 +18,7 @@
 # Submit from the repo root (SUFFIX is appended to the out dir; extra args go to mpc_coil.py), e.g.:
 #   sbatch applications/Agility_Forge/slurm_scripts/submit_mpc_coil_ensemble.sh
 #   SUFFIX=_single_zone11 sbatch --export=ALL --array=3 applications/Agility_Forge/slurm_scripts/submit_mpc_coil_ensemble.sh \
-#       --n-samples 1 --coil-zone-mm 11          (lambda 10, run 1's planner: single start + coil zone)
+#       --n-samples 1 --coil-zone-mm 11          (lambda 10, run 1's planner: single start + coil zone; --array=4 for lambda 100)
 set -euo pipefail
 cd /home/exr343/CIRP_2027
 module load Miniconda3/23.10.0-1
@@ -29,7 +29,7 @@ export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}
 # (job 3994571 ran out of memory in its first plan).
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 echo "Job started: $(date) on $(hostname)"
-LAMBDAS=(0 0.1 1 10)
+LAMBDAS=(0 0.1 1 10 100)            # default array 0-3 = the planned sweep; index 4 = 100
 LAM=${LAMBDAS[${SLURM_ARRAY_TASK_ID}]}
 G=applications/Agility_Forge/GNN
 CKPTS="${G}/coil_T_sweep_test_square/mp_5/stage3.pt"
